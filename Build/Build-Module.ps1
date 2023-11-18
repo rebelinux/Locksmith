@@ -1,4 +1,4 @@
-﻿if (Get-Module -Name 'PSPublishModule' -ListAvailable) { 
+﻿if (Get-Module -Name 'PSPublishModule' -ListAvailable) {
     Write-Information 'PSPublishModule is installed.'
 } else {
     Write-Information 'PSPublishModule is not installed. Attempting installation.'
@@ -17,14 +17,14 @@ Import-Module -Name PSPublishModule -Force
 Build-Module -ModuleName 'Locksmith' {
     # Usual defaults as per standard module
     $Manifest = [ordered] @{
-        ModuleVersion        = '2023.08'
+        ModuleVersion        = '2023.11'
         CompatiblePSEditions = @('Desktop', 'Core')
         GUID                 = 'b1325b42-8dc4-4f17-aa1f-dcb5984ca14a'
         Author               = 'Jake Hildreth'
         Copyright            = "(c) 2022 - $((Get-Date).Year). All rights reserved."
-        Description          = 'A tiny tool to identify and remediate common misconfigurations in Active Directory Certificate Services.'
+        Description          = 'A small tool to find and fix common misconfigurations in Active Directory Certificate Services.'
         PowerShellVersion    = '5.1'
-        Tags                 = @('Windows', 'Locksmith', 'CA', 'PKI', 'Active Directory', 'Certificate Services','AD CS')
+        Tags                 = @('Windows', 'Locksmith', 'CA', 'PKI', 'ActiveDirectory', 'CertificateServices','ADCS')
     }
     New-ConfigurationManifest @Manifest
 
@@ -50,7 +50,12 @@ Build-Module -ModuleName 'Locksmith' {
         New-ConfigurationModule -Type ExternalModule -Name $Module
     }
 
-    New-ConfigurationModuleSkip -IgnoreFunctionName 'Clear-Host'
+
+    # Ignore missing modules or cmdlets during build process
+    New-ConfigurationModuleSkip -IgnoreFunctionName @('Out-ConsoleGridView') -IgnoreModuleName @('Microsoft.PowerShell.ConsoleGuiTools')
+
+    # Tells the script to exclude Out-ConsoleGridView command from functions if the  module is not available to be loaded
+    New-ConfigurationCommand -CommandName @('Out-ConsoleGridView') -ModuleName 'Microsoft.PowerShell.ConsoleGuiTools'
 
     $ConfigurationFormat = [ordered] @{
         RemoveComments                              = $false
@@ -95,22 +100,25 @@ Build-Module -ModuleName 'Locksmith' {
     # configuration for documentation, at the same time it enables documentation processing
     New-ConfigurationDocumentation -Enable:$false -StartClean -UpdateWhenNew -PathReadme 'Docs\Readme.md' -Path 'Docs'
 
-    New-ConfigurationImportModule -ImportSelf -ImportRequiredModules
+    New-ConfigurationImportModule -ImportSelf #-ImportRequiredModules
 
     New-ConfigurationBuild -Enable:$true -SignModule:$false -DeleteTargetModuleBeforeBuild -MergeModuleOnBuild -UseWildcardForFunctions
 
     $PreScriptMerge = {
         param (
-            [int]$Mode
+            [int]$Mode,
+            [Parameter()]
+                [ValidateSet('Auditing','ESC1','ESC2','ESC3','ESC4','ESC5','ESC6','ESC8','All','PromptMe')]
+                [array]$Scans = 'All'
         )
     }
 
-    $PostScriptMerge = { Invoke-Locksmith -Mode $Mode }
+    $PostScriptMerge = { Invoke-Locksmith -Mode $Mode -Scans $Scans }
 
     New-ConfigurationArtefact -Type Packed -Enable -Path "$PSScriptRoot\..\Artefacts\Packed" -ArtefactName '<ModuleName>-v<ModuleVersion>.zip'
     New-ConfigurationArtefact -Type Script -Enable -Path "$PSScriptRoot\..\Artefacts\Script" -PreScriptMerge $PreScriptMerge -PostScriptMerge $PostScriptMerge -ScriptName "Invoke-<ModuleName>.ps1"
     New-ConfigurationArtefact -Type ScriptPacked -Enable -Path "$PSScriptRoot\..\Artefacts\ScriptPacked" -ArtefactName "Invoke-<ModuleName>.zip" -PreScriptMerge $PreScriptMerge -PostScriptMerge $PostScriptMerge -ScriptName "Invoke-<ModuleName>.ps1"
     New-ConfigurationArtefact -Type Unpacked -Enable -Path "$PSScriptRoot\..\Artefacts\Unpacked"
-
-    Copy-Item "$PSScriptRoot\..\Artefacts\Script\Invoke-Locksmith.ps1" "$PSScriptRoot\..\"
 }
+
+Copy-Item "$PSScriptRoot\..\Artefacts\Script\Invoke-Locksmith.ps1" "$PSScriptRoot\..\"
