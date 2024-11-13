@@ -29,7 +29,7 @@
 
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory)]
         $ADCSObjects
     )
 
@@ -37,20 +37,51 @@
         $ADCSObjects | Where-Object {
             $_.CAEnrollmentEndpoint
         } | ForEach-Object {
-            $Issue = [pscustomobject]@{
-                Forest               = $_.CanonicalName.split('/')[0]
-                Name                 = $_.Name
-                DistinguishedName    = $_.DistinguishedName
-                CAEnrollmentEndpoint = $_.CAEnrollmentEndpoint
-                Issue                = 'HTTP enrollment is enabled.'
-                Fix                  = '[TODO]'
-                Revert               = '[TODO]'
-                Technique            = 'ESC8'
+            foreach ($endpoint in $_.CAEnrollmentEndpoint) {
+                $Issue = [pscustomobject]@{
+                    Forest               = $_.CanonicalName.split('/')[0]
+                    Name                 = $_.Name
+                    DistinguishedName    = $_.DistinguishedName
+                    CAEnrollmentEndpoint = $endpoint.URL
+                    AuthType             = $endpoint.Auth
+                    Issue                = @'
+An HTTP enrollment endpoint is available. It is possible to relay NTLM
+authentication to this HTTP endpoint.
+
+If the LAN Manager authentication level of any domain in this forest is 2 or
+less, an attacker can coerce authentication from a Domain Controller (DC) and
+relay it to this HTTP enrollment enpoint to receive a certificate which can be
+used to authenticate as that DC.
+
+'@
+                    Fix                  = @'
+Disable HTTP access and enforce HTTPS.
+Enable EPA.
+Disable NTLM authentication (if possible.)
+'@
+                    Revert               = '[TODO]'
+                    Technique            = 'ESC8'
+                }
+                if ($endpoint.URL -match '^https:') {
+                    $Issue.Issue = @'
+An HTTPS enrollment endpoint is available. It may be possible to relay NTLM
+authentication to this HTTPS endpoint. Enabling IIS Extended Protection for
+Authentication or disabling NTLM authentication completely, NTLM relay is not
+possible.
+
+If those protection are not in place, and the LAN Manager authentication level
+of any domain in this forest is 2 or less, an attacker can coerce authentication
+from a Domain Controller (DC) and relay it to this HTTPS enrollment enpoint to
+receive a certificate which can be used to authenticate as that DC.
+
+'@
+                    $Issue.Fix = @'
+Ensure EPA is enabled.
+Disable NTLM authentication (if possible.)
+'@
+                }
+                $Issue
             }
-            if ($_.CAEnrollmentEndpoint -like '^https*') {
-                $Issue.Issue = 'HTTPS enrollment is enabled.'
-            }
-            $Issue
         }
     }
 }

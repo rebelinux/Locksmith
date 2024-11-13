@@ -1,4 +1,9 @@
-﻿if (Get-Module -Name 'PSPublishModule' -ListAvailable) {
+﻿param (
+    # A CalVer string if you need to manually override the default yyyy.M.d version string.
+    [string]$CalVer
+)
+
+if (Get-Module -Name 'PSPublishModule' -ListAvailable) {
     Write-Information 'PSPublishModule is installed.'
 } else {
     Write-Information 'PSPublishModule is not installed. Attempting installation.'
@@ -17,7 +22,7 @@ Import-Module -Name PSPublishModule -Force
 Build-Module -ModuleName 'Locksmith' {
     # Usual defaults as per standard module
     $Manifest = [ordered] @{
-        ModuleVersion        = (Get-Date -Format yyyy.M)
+        ModuleVersion        = if ($Calver) {$CalVer} else {(Get-Date -Format yyyy.M.d)}
         CompatiblePSEditions = @('Desktop', 'Core')
         GUID                 = 'b1325b42-8dc4-4f17-aa1f-dcb5984ca14a'
         Author               = 'Jake Hildreth'
@@ -29,6 +34,13 @@ Build-Module -ModuleName 'Locksmith' {
         Tags                 = @('Windows', 'Locksmith', 'CA', 'PKI', 'ActiveDirectory', 'CertificateServices','ADCS')
     }
     New-ConfigurationManifest @Manifest
+
+    # See [PR26](https://github.com/EvotecIT/PSPublishModule/pull/26) for notes about using placeholders and
+    # built-in placeholders for common module metadata.
+    # New-ConfigurationPlaceHolder -CustomReplacement @(
+    #     @{ Find = '{CustomName}'; Replace = 'SpecialCase' }
+    #     @{ Find = '{CustomVersion}'; Replace = '1.0.0' }
+    # )
 
     # Add standard module dependencies (directly, but can be used with loop as well)
     #New-ConfigurationModule -Type RequiredModule -Name 'PSSharedGoods' -Guid 'Auto' -Version 'Latest'
@@ -44,6 +56,7 @@ Build-Module -ModuleName 'Locksmith' {
         'Microsoft.PowerShell.Utility'
         'Microsoft.PowerShell.LocalAccounts'
         'Microsoft.PowerShell.Management'
+        'Microsoft.PowerShell.Security'
         'CimCmdlets'
         'Dism'
     )
@@ -116,10 +129,9 @@ Build-Module -ModuleName 'Locksmith' {
 
     $PostScriptMerge = { Invoke-Locksmith -Mode $Mode -Scans $Scans }
 
-    New-ConfigurationArtefact -Type Packed -Enable -Path "$PSScriptRoot\..\Artefacts\Packed" -ArtefactName '<ModuleName>-v<ModuleVersion>.zip'
+    New-ConfigurationArtefact -Type Packed -Enable -Path "$PSScriptRoot\..\Artefacts\Packed" -ArtefactName '<ModuleName>.zip'
     New-ConfigurationArtefact -Type Script -Enable -Path "$PSScriptRoot\..\Artefacts\Script" -PreScriptMerge $PreScriptMerge -PostScriptMerge $PostScriptMerge -ScriptName "Invoke-<ModuleName>.ps1"
-    New-ConfigurationArtefact -Type ScriptPacked -Enable -Path "$PSScriptRoot\..\Artefacts\ScriptPacked" -ArtefactName "Invoke-<ModuleName>.zip" -PreScriptMerge $PreScriptMerge -PostScriptMerge $PostScriptMerge -ScriptName "Invoke-<ModuleName>.ps1"
-    New-ConfigurationArtefact -Type Unpacked -Enable -Path "$PSScriptRoot\..\Artefacts\Unpacked"
+    # New-ConfigurationPublish -Type PowerShellGallery -FilePath 'C:\Users\jake.BLUETUXEDO\Documents\API Keys\PSGallery.txt'
 }
 
 Copy-Item "$PSScriptRoot\..\Artefacts\Script\Invoke-Locksmith.ps1" "$PSScriptRoot\..\"

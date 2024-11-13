@@ -25,18 +25,17 @@
     #>
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory)]
         [array]$ADCSObjects,
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory)]
         [array]$SafeUsers
     )
     $ADCSObjects | Where-Object {
         ($_.objectClass -eq 'pKICertificateTemplate') -and
         ($_.pkiExtendedKeyUsage -match $ClientAuthEKU) -and
-        ($_.'msPKI-Certificate-Name-Flag' -eq 1) -and
         !($_.'msPKI-Enrollment-Flag' -band 2) -and
-        ($_.'msPKI-RA-Application-Policies' -eq '1.3.6.1.4.1.311.20.2.1') -and
-        ( ($_.'msPKI-RA-Signature' -eq 1) )
+        ($_.'msPKI-RA-Application-Policies' -match '1.3.6.1.4.1.311.20.2.1') -and
+        ($_.'msPKI-RA-Signature' -eq 1)
     } | ForEach-Object {
         foreach ($entry in $_.nTSecurityDescriptor.Access) {
             $Principal = New-Object System.Security.Principal.NTAccount($entry.IdentityReference)
@@ -45,16 +44,31 @@
             } else {
                 $SID = ($Principal.Translate([System.Security.Principal.SecurityIdentifier])).Value
             }
-            if ( ($SID -notmatch $SafeUsers) -and ($entry.ActiveDirectoryRights -match 'ExtendedRight') ) {
+            if ( ($SID -notmatch $SafeUsers) -and ( ($entry.ActiveDirectoryRights -match 'ExtendedRight') -or ($entry.ActiveDirectoryRights -match 'GenericAll') ) ) {
                 $Issue = [pscustomobject]@{
                     Forest                = $_.CanonicalName.split('/')[0]
                     Name                  = $_.Name
                     DistinguishedName     = $_.DistinguishedName
                     IdentityReference     = $entry.IdentityReference
                     ActiveDirectoryRights = $entry.ActiveDirectoryRights
-                    Issue                 = "$($entry.IdentityReference) can enroll in this Client Authentication template using a SAN without Manager Approval"
-                    Fix                   = "Get-ADObject `'$($_.DistinguishedName)`' | Set-ADObject -Replace @{'msPKI-Certificate-Name-Flag' = 0}"
-                    Revert                = "Get-ADObject `'$($_.DistinguishedName)`' | Set-ADObject -Replace @{'msPKI-Certificate-Name-Flag' = 1}"
+                    Issue                 = @"
+If the holder of an Enrollment Agent certificate requests a certificate using
+this template, they will receive a certificate which allows them to authenticate
+as $($entry.IdentityReference).
+
+"@
+                    Fix = @"
+First, eliminate unused Enrollment Agent templates.
+Then, tightly scope any Enrollment Agent templates that remain and:
+# Enable Manager Approval
+`$Object = `'$($_.DistinguishedName)`'
+Get-ADObject `$Object | Set-ADObject -Replace @{'msPKI-Enrollment-Flag' = 2}
+"@
+                    Revert = @"
+# Disable Manager Approval
+`$Object = `'$($_.DistinguishedName)`'
+Get-ADObject `$Object | Set-ADObject -Replace @{'msPKI-Enrollment-Flag' = 0}
+"@
                     Technique             = 'ESC3'
                 }
                 $Issue
