@@ -2795,7 +2795,6 @@ function Set-AdditionalCAProperty {
     )
 
     begin {
-        $CAEnrollmentEndpoint = @()
         if (-not ([System.Management.Automation.PSTypeName]'TrustAllCertsPolicy') ) {
             if ($PSVersionTable.PSEdition -eq 'Desktop') {
                 $code = @"
@@ -2829,6 +2828,7 @@ function Set-AdditionalCAProperty {
 
     process {
         $ADCSObjects | Where-Object objectClass -Match 'pKIEnrollmentService' | ForEach-Object {
+            $CAEnrollmentEndpoint = @()
             #[array]$CAEnrollmentEndpoint = $_.'msPKI-Enrollment-Servers' | Select-String 'http.*' | ForEach-Object { $_.Matches[0].Value }
             foreach ($directory in @("certsrv/", "$($_.Name)_CES_Kerberos/service.svc", "$($_.Name)_CES_Kerberos/service.svc/CES", "ADPolicyProvider_CEP_Kerberos/service.svc", "certsrv/mscep/")) {
                 $URL = "://$($_.dNSHostName)/$directory"
@@ -4381,7 +4381,7 @@ function Invoke-Locksmith {
         [System.Management.Automation.PSCredential]$Credential
     )
 
-    $Version = '2025.1.14'
+    $Version = '2025.2.22'
     $LogoPart1 = @'
     _       _____  _______ _     _ _______ _______ _____ _______ _     _
     |      |     | |       |____/  |______ |  |  |   |      |    |_____|
@@ -4612,7 +4612,7 @@ Invoke-Locksmith -Mode 1
             $Output = Join-Path -Path $OutputPath -ChildPath "$FilePrefix ADCSIssues.CSV"
             Write-Host "Writing AD CS issues to $Output..."
             try {
-                $AllIssues | Select-Object Forest, Technique, Name, Issue | Export-Csv -NoTypeInformation $Output
+                $AllIssues | Select-Object Forest, Technique, Name, Issue, @{l = 'Risk'; e = { $_.RiskName } } | Export-Csv -NoTypeInformation $Output
                 Write-Host "$Output created successfully!`n"
             }
             catch {
@@ -4623,7 +4623,7 @@ Invoke-Locksmith -Mode 1
             $Output = Join-Path -Path $OutputPath -ChildPath "$FilePrefix ADCSRemediation.CSV"
             Write-Host "Writing AD CS issues to $Output..."
             try {
-                $AllIssues | Select-Object Forest, Technique, Name, DistinguishedName, Issue, Fix | Export-Csv -NoTypeInformation $Output
+                $AllIssues | Select-Object Forest, Technique, Name, DistinguishedName, Issue, Fix, @{l = 'Risk'; e = { $_.RiskName } }, @{l = 'Risk Score'; e = { $_.RiskValue } }, @{l = 'Risk Score Detail'; e = { $_.RiskScoring -join "`n" } } | Export-Csv -NoTypeInformation $Output
                 Write-Host "$Output created successfully!`n"
             }
             catch {
