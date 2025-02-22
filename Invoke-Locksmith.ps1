@@ -1164,7 +1164,15 @@ function Find-ESC5 {
         }
 
         $IssueDetail = ''
-        if ( ($_.objectClass -ne 'pKICertificateTemplate') -and ($SID -notmatch $SafeOwners) ) {
+        $DangerousOwner = $false
+        if ( ($_.objectClass -eq 'computer') -and ($SID -match '-512$') ) {
+            $DangerousOwner = $false
+        }
+        elseif ( ($_.objectClass -ne 'pKICertificateTemplate') -and ($SID -notmatch $SafeOwners) ) {
+            $DangerousOwner = $true
+        }
+
+        if ($DangerousOwner) {
             switch ($_.objectClass) {
                 container {
                     $IssueDetail = @"
@@ -1177,7 +1185,8 @@ CA objects, new templates, new OIDs, etc. to create novel escalation paths.
                     $IssueDetail = @"
 This computer is hosting a Certification Authority (CA).
 
-There is no reason for anyone other than AD Admins to have own CA host objects.
+There is no reason for anyone other than Enterprise Admins or Domain Admins to
+own CA host objects.
 "@
                 }
                 'msPKI-Cert-Template-OID' {
@@ -1197,7 +1206,7 @@ Ownership rights can be used to enable currently disabled templates.
 
 If this prinicpal also has control over a disabled certificate template (aka ESC4),
 they could modify the template into an ESC1 template and enable the certificate.
-This ensabled certificate could be use for privilege escalation and persistence.
+This enabled certificate could be use for privilege escalation and persistence.
 "@
                 }
             }
@@ -4381,7 +4390,7 @@ function Invoke-Locksmith {
         [System.Management.Automation.PSCredential]$Credential
     )
 
-    $Version = '2025.1.14'
+    $Version = '2025.2.22'
     $LogoPart1 = @'
     _       _____  _______ _     _ _______ _______ _____ _______ _     _
     |      |     | |       |____/  |______ |  |  |   |      |    |_____|
