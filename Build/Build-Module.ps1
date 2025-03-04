@@ -120,10 +120,11 @@ Build-Module -ModuleName 'Locksmith' {
     New-ConfigurationBuild -Enable:$true -SignModule:$false -DeleteTargetModuleBeforeBuild -MergeModuleOnBuild #-UseWildcardForFunctions
 
     $PreScriptMerge = {
+        [CmdletBinding()]
         param (
             [int]$Mode,
             [Parameter()]
-            [ValidateSet('Auditing','ESC1','ESC2','ESC3','ESC4','ESC5','ESC6','ESC8','ESC11','ESC13','ESC15','EKUwu','All','PromptMe')]
+            [ValidateSet('Auditing', 'ESC1', 'ESC2', 'ESC3', 'ESC4', 'ESC5', 'ESC6', 'ESC8', 'ESC11', 'ESC13', 'ESC15', 'EKUwu', 'All', 'PromptMe')]
             [array]$Scans = 'All'
         )
     }
