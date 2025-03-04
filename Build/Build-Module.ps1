@@ -32,7 +32,7 @@ Build-Module -ModuleName 'Locksmith' {
         ProjectUri           = 'https://github.com/jakehildreth/Locksmith'
         IconUri              = 'https://raw.githubusercontent.com/jakehildreth/Locksmith/main/Images/locksmith.ico'
         PowerShellVersion    = '5.1'
-        Tags                 = @('Windows', 'Locksmith', 'CA', 'PKI', 'ActiveDirectory', 'CertificateServices', 'ADCS')
+        Tags                 = @('Locksmith', 'ActiveDirectory', 'ADCS', 'CA', 'Certificate', 'CertificateAuthority', 'CertificateServices', 'PKI', 'X509', 'Windows')
     }
     New-ConfigurationManifest @Manifest
 
