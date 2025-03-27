@@ -7,6 +7,10 @@ on:
   pull_request:
     branches:
       - main
+    paths:  # Only deploy MkDocs when the contents of the docs folder change or when this workflow changes
+      - 'Docs/**'
+      - '.github/workflows/Deploy MkDocs.yml'
+      - './mkdocs.yml'
   push:
     branches:
       - main  # The branch you want to deploy from
@@ -18,7 +22,12 @@ on:
 
 jobs:
   build:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
 
     steps:
       - name: ✅ Checkout Repository
