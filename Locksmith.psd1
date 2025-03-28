@@ -8,7 +8,7 @@
     FunctionsToExport    = 'Invoke-Locksmith'
     GUID                 = 'b1325b42-8dc4-4f17-aa1f-dcb5984ca14a'
     HelpInfoURI          = 'https://raw.githubusercontent.com/jakehildreth/Locksmith/main/en-US/'
-    ModuleVersion        = '2025.2.22'
+    ModuleVersion        = '2025.3.28'
     PowerShellVersion    = '5.1'
     PrivateData          = @{
         PSData = @{
