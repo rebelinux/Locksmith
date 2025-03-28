@@ -2900,11 +2900,11 @@ function Set-AdditionalCAProperty {
                 $CAHostDistinguishedName = (Get-ADObject -Filter { (Name -eq $CAHostName) -and (objectclass -eq 'computer') } -Server $ForestGC ).DistinguishedName
                 $CAHostFQDN = (Get-ADObject -Filter { (Name -eq $CAHostName) -and (objectclass -eq 'computer') } -Properties DnsHostname -Server $ForestGC).DnsHostname
             }
-            $ping = Test-Connection -ComputerName $CAHostFQDN -Quiet -Count 1
+            $ping = if ($CAHostFQDN) { Test-Connection -ComputerName $CAHostFQDN -Count 1 -Quiet } else { Write-Warning "Unable to resolve $($_.Name) Fully Qualified Domain Name (FQDN)" }
             if ($ping) {
                 try {
                     if ($Credential) {
-                        $CertutilAudit = Invoke-Command -ComputerName $CAHostname -Credential $Credential -ScriptBlock { param($CAFullName); certutil -config $CAFullName -getreg CA\AuditFilter } -ArgumentList $CAFullName
+                        $CertutilAudit = Invoke-Command -ComputerName $CAHostFQDN -Credential $Credential -ScriptBlock { certutil -config $using:CAFullName -getreg CA\AuditFilter }
                     }
                     else {
                         $CertutilAudit = certutil -config $CAFullName -getreg CA\AuditFilter
@@ -2915,7 +2915,7 @@ function Set-AdditionalCAProperty {
                 }
                 try {
                     if ($Credential) {
-                        $CertutilFlag = Invoke-Command -ComputerName $CAHostname -Credential $Credential -ScriptBlock { param($CAFullName); certutil -config $CAFullName -getreg policy\EditFlags } -ArgumentList $CAFullName
+                        $CertutilFlag = Invoke-Command -ComputerName $CAHostFQDN -Credential $Credential -ScriptBlock { certutil -config $using:CAFullName -getreg policy\EditFlags }
                     }
                     else {
                         $CertutilFlag = certutil -config $CAFullName -getreg policy\EditFlags
@@ -2926,7 +2926,7 @@ function Set-AdditionalCAProperty {
                 }
                 try {
                     if ($Credential) {
-                        $CertutilInterfaceFlag = Invoke-Command -ComputerName $CAHostname -Credential $Credential -ScriptBlock { param($CAFullName); certutil -config $CAFullName -getreg CA\InterfaceFlags } -ArgumentList $CAFullName
+                        $CertutilInterfaceFlag = Invoke-Command -ComputerName $CAHostFQDN -Credential $Credential -ScriptBlock { certutil -config $using:CAFullName -getreg CA\InterfaceFlags }
                     }
                     else {
                         $CertutilInterfaceFlag = certutil -config $CAFullName -getreg CA\InterfaceFlags
@@ -3395,23 +3395,23 @@ function Set-RiskRating {
             switch ($Issue.objectClass) {
                 # Being able to modify Root CA Objects is very bad.
                 'certificationAuthority' {
-                    $RiskValue += 2; $RiskScoring += 'Root Certification Authority bject: +2' 
+                    $RiskValue += 2; $RiskScoring += 'Root Certification Authority bject: +2'
                 }
                 # Being able to modify Issuing CA Objects is also very bad.
                 'pKIEnrollmentService' {
-                    $RiskValue += 2; $RiskScoring += 'Issuing Certification Authority Object: +2' 
+                    $RiskValue += 2; $RiskScoring += 'Issuing Certification Authority Object: +2'
                 }
                 # Being able to modify CA Hosts? Yeah... very bad.
                 'computer' {
-                    $RiskValue += 2; $RiskScoring += 'Certification Authority Host Computer: +2' 
+                    $RiskValue += 2; $RiskScoring += 'Certification Authority Host Computer: +2'
                 }
                 # Being able to modify OIDs could result in ESC13 vulns.
                 'msPKI-Enterprise-Oid' {
-                    $RiskValue += 1; $RiskScoring += 'OID: +1' 
+                    $RiskValue += 1; $RiskScoring += 'OID: +1'
                 }
                 # Being able to modify PKS containers is bad.
                 'container' {
-                    $RiskValue += 1; $RiskScoring += 'Container: +1' 
+                    $RiskValue += 1; $RiskScoring += 'Container: +1'
                 }
             }
         }
@@ -3420,19 +3420,19 @@ function Set-RiskRating {
     # Convert Value to Name
     $RiskName = switch ($RiskValue) {
         { $_ -le 1 } {
-            'Informational' 
+            'Informational'
         }
         2 {
-            'Low' 
+            'Low'
         }
         3 {
-            'Medium' 
+            'Medium'
         }
         4 {
-            'High' 
+            'High'
         }
         { $_ -ge 5 } {
-            'Critical' 
+            'Critical'
         }
     }
 
@@ -3981,7 +3981,7 @@ Set-Acl -Path `$Path -AclObject `$ACL
 "@
             }
             4 {
-                break 
+                break
             }
             5 {
                 $Issue.Fix = @"
@@ -4144,10 +4144,10 @@ Function Write-HostColorized {
             # We precompile them for better performance with many input objects.
             [System.Text.RegularExpressions.RegexOptions] $reOpts =
             if ($CaseSensitive) {
-                'Compiled, ExplicitCapture' 
+                'Compiled, ExplicitCapture'
             }
             else {
-                'Compiled, ExplicitCapture, IgnoreCase' 
+                'Compiled, ExplicitCapture, IgnoreCase'
             }
 
             # Transform the dictionary:
@@ -4169,10 +4169,10 @@ Function Write-HostColorized {
                 }
                 $colorArgs = @{ }
                 if ($fg) {
-                    $colorArgs['ForegroundColor'] = [ConsoleColor] $fg 
+                    $colorArgs['ForegroundColor'] = [ConsoleColor] $fg
                 }
                 if ($bg) {
-                    $colorArgs['BackgroundColor'] = [ConsoleColor] $bg 
+                    $colorArgs['BackgroundColor'] = [ConsoleColor] $bg
                 }
 
                 # Consolidate the patterns into a single pattern with alternation ('|'),
@@ -4191,7 +4191,7 @@ Function Write-HostColorized {
             }
         }
         catch {
-            throw 
+            throw
         }
 
         # Construct the arguments to pass to Out-String.
@@ -4214,7 +4214,7 @@ Function Write-HostColorized {
                     foreach ($m in $entry.Key.Matches($_)) {
                         @{ Index = $m.Index; Text = $m.Value; ColorArgs = $entry.Value }
                         if ($WholeLine) {
-                            break patternLoop 
+                            break patternLoop
                         }
                     }
                 }

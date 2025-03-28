@@ -127,11 +127,11 @@
                 $CAHostDistinguishedName = (Get-ADObject -Filter { (Name -eq $CAHostName) -and (objectclass -eq 'computer') } -Server $ForestGC ).DistinguishedName
                 $CAHostFQDN = (Get-ADObject -Filter { (Name -eq $CAHostName) -and (objectclass -eq 'computer') } -Properties DnsHostname -Server $ForestGC).DnsHostname
             }
-            $ping = Test-Connection -ComputerName $CAHostFQDN -Quiet -Count 1
+            $ping = if ($CAHostFQDN) { Test-Connection -ComputerName $CAHostFQDN -Count 1 -Quiet } else { Write-Warning "Unable to resolve $($_.Name) Fully Qualified Domain Name (FQDN)" }
             if ($ping) {
                 try {
                     if ($Credential) {
-                        $CertutilAudit = Invoke-Command -ComputerName $CAHostname -Credential $Credential -ScriptBlock { param($CAFullName); certutil -config $CAFullName -getreg CA\AuditFilter } -ArgumentList $CAFullName
+                        $CertutilAudit = Invoke-Command -ComputerName $CAHostFQDN -Credential $Credential -ScriptBlock { certutil -config $using:CAFullName -getreg CA\AuditFilter }
                     } else {
                         $CertutilAudit = certutil -config $CAFullName -getreg CA\AuditFilter
                     }
@@ -140,7 +140,7 @@
                 }
                 try {
                     if ($Credential) {
-                        $CertutilFlag = Invoke-Command -ComputerName $CAHostname -Credential $Credential -ScriptBlock { param($CAFullName); certutil -config $CAFullName -getreg policy\EditFlags } -ArgumentList $CAFullName
+                        $CertutilFlag = Invoke-Command -ComputerName $CAHostFQDN -Credential $Credential -ScriptBlock { certutil -config $using:CAFullName -getreg policy\EditFlags }
                     } else {
                         $CertutilFlag = certutil -config $CAFullName -getreg policy\EditFlags
                     }
@@ -149,7 +149,7 @@
                 }
                 try {
                     if ($Credential) {
-                        $CertutilInterfaceFlag = Invoke-Command -ComputerName $CAHostname -Credential $Credential -ScriptBlock { param($CAFullName); certutil -config $CAFullName -getreg CA\InterfaceFlags } -ArgumentList $CAFullName
+                        $CertutilInterfaceFlag = Invoke-Command -ComputerName $CAHostFQDN -Credential $Credential -ScriptBlock { certutil -config $using:CAFullName -getreg CA\InterfaceFlags }
                     } else {
                         $CertutilInterfaceFlag = certutil -config $CAFullName -getreg CA\InterfaceFlags
                     }
