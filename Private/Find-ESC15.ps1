@@ -82,7 +82,7 @@ More info:
     Step 1: Open an elevated Powershell session as an AD or PKI Admin
     Step 2: Run Unpublish-SchemaV1Templates.ps1
 #>
-Invoke-WebRequest -Uri https://bit.ly/Fix-ESC15 | Invoke-Expression
+Invoke-WebRequest -Uri https://gist.githubusercontent.com/jakehildreth/13c7d615adc905d317fc4379026ad28e/raw/Unpublish-SchemaV1Templates.ps1 | Invoke-Expression
 
 "@
                     Revert                = '[TODO]'
