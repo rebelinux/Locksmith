@@ -1,5 +1,11 @@
-﻿param (
-    [int]$Mode,
+﻿[CmdletBinding(HelpUri = 'https://jakehildreth.github.io/Locksmith/Invoke-Locksmith')]
+param (
+    # The mode to run Locksmith in. Defaults to 0.
+    [Parameter(Mandatory = $false)]
+    [ValidateSet(0, 1, 2, 3, 4)]
+    [int]$Mode = 0,
+
+    # The scans to run. Defaults to 'All'.
     [Parameter()]
     [ValidateSet('Auditing', 'ESC1', 'ESC2', 'ESC3', 'ESC4', 'ESC5', 'ESC6', 'ESC8', 'ESC11', 'ESC13', 'ESC15', 'EKUwu', 'All', 'PromptMe')]
     [array]$Scans = 'All'
@@ -2900,7 +2906,12 @@ function Set-AdditionalCAProperty {
                 $CAHostDistinguishedName = (Get-ADObject -Filter { (Name -eq $CAHostName) -and (objectclass -eq 'computer') } -Server $ForestGC ).DistinguishedName
                 $CAHostFQDN = (Get-ADObject -Filter { (Name -eq $CAHostName) -and (objectclass -eq 'computer') } -Properties DnsHostname -Server $ForestGC).DnsHostname
             }
-            $ping = if ($CAHostFQDN) { Test-Connection -ComputerName $CAHostFQDN -Count 1 -Quiet } else { Write-Warning "Unable to resolve $($_.Name) Fully Qualified Domain Name (FQDN)" }
+            $ping = if ($CAHostFQDN) {
+                Test-Connection -ComputerName $CAHostFQDN -Count 1 -Quiet 
+            }
+            else {
+                Write-Warning "Unable to resolve $($_.Name) Fully Qualified Domain Name (FQDN)" 
+            }
             if ($ping) {
                 try {
                     if ($Credential) {
@@ -3395,23 +3406,23 @@ function Set-RiskRating {
             switch ($Issue.objectClass) {
                 # Being able to modify Root CA Objects is very bad.
                 'certificationAuthority' {
-                    $RiskValue += 2; $RiskScoring += 'Root Certification Authority bject: +2'
+                    $RiskValue += 2; $RiskScoring += 'Root Certification Authority bject: +2' 
                 }
                 # Being able to modify Issuing CA Objects is also very bad.
                 'pKIEnrollmentService' {
-                    $RiskValue += 2; $RiskScoring += 'Issuing Certification Authority Object: +2'
+                    $RiskValue += 2; $RiskScoring += 'Issuing Certification Authority Object: +2' 
                 }
                 # Being able to modify CA Hosts? Yeah... very bad.
                 'computer' {
-                    $RiskValue += 2; $RiskScoring += 'Certification Authority Host Computer: +2'
+                    $RiskValue += 2; $RiskScoring += 'Certification Authority Host Computer: +2' 
                 }
                 # Being able to modify OIDs could result in ESC13 vulns.
                 'msPKI-Enterprise-Oid' {
-                    $RiskValue += 1; $RiskScoring += 'OID: +1'
+                    $RiskValue += 1; $RiskScoring += 'OID: +1' 
                 }
                 # Being able to modify PKS containers is bad.
                 'container' {
-                    $RiskValue += 1; $RiskScoring += 'Container: +1'
+                    $RiskValue += 1; $RiskScoring += 'Container: +1' 
                 }
             }
         }
@@ -3420,19 +3431,19 @@ function Set-RiskRating {
     # Convert Value to Name
     $RiskName = switch ($RiskValue) {
         { $_ -le 1 } {
-            'Informational'
+            'Informational' 
         }
         2 {
-            'Low'
+            'Low' 
         }
         3 {
-            'Medium'
+            'Medium' 
         }
         4 {
-            'High'
+            'High' 
         }
         { $_ -ge 5 } {
-            'Critical'
+            'Critical' 
         }
     }
 
@@ -3981,7 +3992,7 @@ Set-Acl -Path `$Path -AclObject `$ACL
 "@
             }
             4 {
-                break
+                break 
             }
             5 {
                 $Issue.Fix = @"
@@ -4144,10 +4155,10 @@ Function Write-HostColorized {
             # We precompile them for better performance with many input objects.
             [System.Text.RegularExpressions.RegexOptions] $reOpts =
             if ($CaseSensitive) {
-                'Compiled, ExplicitCapture'
+                'Compiled, ExplicitCapture' 
             }
             else {
-                'Compiled, ExplicitCapture, IgnoreCase'
+                'Compiled, ExplicitCapture, IgnoreCase' 
             }
 
             # Transform the dictionary:
@@ -4169,10 +4180,10 @@ Function Write-HostColorized {
                 }
                 $colorArgs = @{ }
                 if ($fg) {
-                    $colorArgs['ForegroundColor'] = [ConsoleColor] $fg
+                    $colorArgs['ForegroundColor'] = [ConsoleColor] $fg 
                 }
                 if ($bg) {
-                    $colorArgs['BackgroundColor'] = [ConsoleColor] $bg
+                    $colorArgs['BackgroundColor'] = [ConsoleColor] $bg 
                 }
 
                 # Consolidate the patterns into a single pattern with alternation ('|'),
@@ -4191,7 +4202,7 @@ Function Write-HostColorized {
             }
         }
         catch {
-            throw
+            throw 
         }
 
         # Construct the arguments to pass to Out-String.
@@ -4214,7 +4225,7 @@ Function Write-HostColorized {
                     foreach ($m in $entry.Key.Matches($_)) {
                         @{ Index = $m.Index; Text = $m.Value; ColorArgs = $entry.Value }
                         if ($WholeLine) {
-                            break patternLoop
+                            break patternLoop 
                         }
                     }
                 }
@@ -4390,7 +4401,7 @@ function Invoke-Locksmith {
         [System.Management.Automation.PSCredential]$Credential
     )
 
-    $Version = '2025.3.28'
+    $Version = '2025.4.20'
     $LogoPart1 = @'
     _       _____  _______ _     _ _______ _______ _____ _______ _     _
     |      |     | |       |____/  |______ |  |  |   |      |    |_____|
