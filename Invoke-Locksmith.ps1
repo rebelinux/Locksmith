@@ -1,5 +1,11 @@
-﻿param (
-    [int]$Mode,
+﻿[CmdletBinding(HelpUri = 'https://jakehildreth.github.io/Locksmith/Invoke-Locksmith')]
+param (
+    # The mode to run Locksmith in. Defaults to 0.
+    [Parameter(Mandatory = $false)]
+    [ValidateSet(0, 1, 2, 3, 4)]
+    [int]$Mode = 0,
+
+    # The scans to run. Defaults to 'All'.
     [Parameter()]
     [ValidateSet('Auditing', 'ESC1', 'ESC2', 'ESC3', 'ESC4', 'ESC5', 'ESC6', 'ESC8', 'ESC11', 'ESC13', 'ESC15', 'EKUwu', 'All', 'PromptMe')]
     [array]$Scans = 'All'
@@ -581,7 +587,7 @@ More info:
     Step 1: Open an elevated Powershell session as an AD or PKI Admin
     Step 2: Run Unpublish-SchemaV1Templates.ps1
 #>
-Invoke-WebRequest -Uri https://bit.ly/Fix-ESC15 | Invoke-Expression
+Invoke-WebRequest -Uri https://gist.githubusercontent.com/jakehildreth/13c7d615adc905d317fc4379026ad28e/raw/Unpublish-SchemaV1Templates.ps1 | Invoke-Expression
 
 "@
                     Revert                = '[TODO]'
@@ -2900,11 +2906,16 @@ function Set-AdditionalCAProperty {
                 $CAHostDistinguishedName = (Get-ADObject -Filter { (Name -eq $CAHostName) -and (objectclass -eq 'computer') } -Server $ForestGC ).DistinguishedName
                 $CAHostFQDN = (Get-ADObject -Filter { (Name -eq $CAHostName) -and (objectclass -eq 'computer') } -Properties DnsHostname -Server $ForestGC).DnsHostname
             }
-            $ping = Test-Connection -ComputerName $CAHostFQDN -Quiet -Count 1
+            $ping = if ($CAHostFQDN) {
+                Test-Connection -ComputerName $CAHostFQDN -Count 1 -Quiet 
+            }
+            else {
+                Write-Warning "Unable to resolve $($_.Name) Fully Qualified Domain Name (FQDN)" 
+            }
             if ($ping) {
                 try {
                     if ($Credential) {
-                        $CertutilAudit = Invoke-Command -ComputerName $CAHostname -Credential $Credential -ScriptBlock { param($CAFullName); certutil -config $CAFullName -getreg CA\AuditFilter } -ArgumentList $CAFullName
+                        $CertutilAudit = Invoke-Command -ComputerName $CAHostFQDN -Credential $Credential -ScriptBlock { certutil -config $using:CAFullName -getreg CA\AuditFilter }
                     }
                     else {
                         $CertutilAudit = certutil -config $CAFullName -getreg CA\AuditFilter
@@ -2915,7 +2926,7 @@ function Set-AdditionalCAProperty {
                 }
                 try {
                     if ($Credential) {
-                        $CertutilFlag = Invoke-Command -ComputerName $CAHostname -Credential $Credential -ScriptBlock { param($CAFullName); certutil -config $CAFullName -getreg policy\EditFlags } -ArgumentList $CAFullName
+                        $CertutilFlag = Invoke-Command -ComputerName $CAHostFQDN -Credential $Credential -ScriptBlock { certutil -config $using:CAFullName -getreg policy\EditFlags }
                     }
                     else {
                         $CertutilFlag = certutil -config $CAFullName -getreg policy\EditFlags
@@ -2926,7 +2937,7 @@ function Set-AdditionalCAProperty {
                 }
                 try {
                     if ($Credential) {
-                        $CertutilInterfaceFlag = Invoke-Command -ComputerName $CAHostname -Credential $Credential -ScriptBlock { param($CAFullName); certutil -config $CAFullName -getreg CA\InterfaceFlags } -ArgumentList $CAFullName
+                        $CertutilInterfaceFlag = Invoke-Command -ComputerName $CAHostFQDN -Credential $Credential -ScriptBlock { certutil -config $using:CAFullName -getreg CA\InterfaceFlags }
                     }
                     else {
                         $CertutilInterfaceFlag = certutil -config $CAFullName -getreg CA\InterfaceFlags
@@ -4390,7 +4401,7 @@ function Invoke-Locksmith {
         [System.Management.Automation.PSCredential]$Credential
     )
 
-    $Version = '2025.2.22'
+    $Version = '2025.4.20'
     $LogoPart1 = @'
     _       _____  _______ _     _ _______ _______ _____ _______ _     _
     |      |     | |       |____/  |______ |  |  |   |      |    |_____|
