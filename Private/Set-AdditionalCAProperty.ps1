@@ -205,18 +205,14 @@
                 }
             }
             if ($CertutilSecurity) {
-                [string]$CAAdministrator = $CertutilSecurity | ForEach-Object {
-                    if ($_ -match '^.*Allow.*CA Administrator.*?\s+([^\s\\]+\\.+)$') {
-                        [PSCustomObject]@{
-                            CAAdministrator = $matches[1]
-                        }
+                [string[]]$CAAdministrator = $CertutilSecurity | ForEach-Object {
+                    if ($_ -match '^.*Allow.*CA Administrator.*.*\t(.*)$') {
+                        $matches[1].ToString()
                     }
                 }
-                [string]$CertificateManager = $CertutilSecurity | ForEach-Object {
-                    if ($_ -match '^.*Allow.*Certificate Manager.*?\s+([^\s\\]+\\.+)$') {
-                        [PSCustomObject]@{
-                            CertificateManager = $matches[1]
-                        }
+                [string[]]$CertificateManager = $CertutilSecurity | ForEach-Object {
+                    if ($_ -match '^.*Allow.*Certificate Manager.*\t(.*)$') {
+                        $matches[1].ToString()
                     }
                 }
             }
