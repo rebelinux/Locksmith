@@ -93,6 +93,7 @@ function Invoke-Locksmith {
             'ESC4',
             'ESC5',
             'ESC6',
+            'ESC7',
             'ESC8',
             'ESC11',
             'ESC13',
