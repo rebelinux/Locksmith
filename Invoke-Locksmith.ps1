@@ -7,7 +7,7 @@ param (
 
     # The scans to run. Defaults to 'All'.
     [Parameter()]
-    [ValidateSet('Auditing', 'ESC1', 'ESC2', 'ESC3', 'ESC4', 'ESC5', 'ESC6', 'ESC7', 'ESC8', 'ESC11', 'ESC13', 'ESC15', 'EKUwu', 'All', 'PromptMe')]
+    [ValidateSet('Auditing', 'ESC1', 'ESC2', 'ESC3', 'ESC4', 'ESC5', 'ESC6', 'ESC7', 'ESC8', 'ESC11', 'ESC13', 'ESC15', 'EKUwu', 'ESC16', 'All', 'PromptMe')]
     [array]$Scans = 'All'
 )
 function Convert-IdentityReferenceToSid {
@@ -598,6 +598,82 @@ Invoke-WebRequest -Uri https://gist.githubusercontent.com/jakehildreth/13c7d615a
                 }
                 $Issue
             }
+        }
+    }
+}
+
+function Find-ESC16 {
+    <#
+    .SYNOPSIS
+        This script finds Active Directory Certificate Services (AD CS) Certification Authorities (CA) that have the ESC16 vulnerability.
+
+    .DESCRIPTION
+        The script takes an array of ADCS objects as input and filters them based on objects that have the objectClass
+        'pKIEnrollmentService' and the szOID_NTDS_CA_SECURITY_EXT disabled. For each matching object, it creates a custom object with
+        properties representing various information about the object, such as Forest, Name, DistinguishedName, Technique,
+        Issue, Fix, and Revert.
+
+    .PARAMETER ADCSObjects
+        Specifies the array of AD CS objects to be processed. This parameter is mandatory.
+
+    .OUTPUTS
+        The script outputs an array of custom objects representing the matching ADCS objects and their associated information.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [Microsoft.ActiveDirectory.Management.ADEntity[]]$ADCSObjects,
+        [Parameter(Mandatory)]
+        [string]$UnsafeUsers,
+        [switch]$SkipRisk
+    )
+    process {
+        $ADCSObjects | Where-Object {
+            ($_.objectClass -eq 'pKIEnrollmentService') -and
+            ($_.DisableExtensionList -ne 'No')
+        } | ForEach-Object {
+            $Issue = [pscustomobject]@{
+                Forest            = $_.CanonicalName.split('/')[0]
+                Name              = $_.Name
+                DistinguishedName = $_.DistinguishedName
+                Issue             = $_.DisableExtensionList
+                Fix               = 'N/A'
+                Revert            = 'N/A'
+                Technique         = 'ESC16'
+            }
+            if ($_.DisableExtensionList -eq 'Yes') {
+                $Issue.Issue = @"
+The Certification Authority (CA) $($_.CAFullName) has the szOID_NTDS_CA_SECURITY_EXT security extension disabled. When
+this extension is disabled, every certificate issued by this CA will be unable to to reliably map a certificate to a
+user or computer account's SID for authentication.
+
+More info:
+  - https://github.com/ly4k/Certipy/wiki/06-%E2%80%90-Privilege-Escalation#esc16-security-extension-disabled-on-ca-globally
+
+"@
+                $Issue.Fix = @"
+# Enable the flag
+# TODO
+
+# Restart the Certificate Authority service
+Invoke-Command -ComputerName '$($_.dNSHostName)' -ScriptBlock {
+    Get-Service -Name certsvc | Restart-Service -Force
+}
+"@
+                $Issue.Revert = @"
+# Disable the flag
+TODO
+
+# Restart the Certificate Authority service
+Invoke-Command -ComputerName '$($_.dNSHostName)' -ScriptBlock {
+    Get-Service -Name certsvc | Restart-Service -Force
+}
+"@
+            }
+            if ($SkipRisk -eq $false) {
+                Set-RiskRating -ADCSObjects $ADCSObjects -Issue $Issue -SafeUsers $SafeUsers -UnsafeUsers $UnsafeUsers
+            }
+            $Issue
         }
     }
 }
@@ -1494,7 +1570,7 @@ function Find-ESC7 {
     process {
         $ADCSObjects | Where-Object {
             ($_.objectClass -eq 'pKIEnrollmentService') -and
-            ( ($_.CAAdministrator) -or ($_.CertificateManager) )
+            ( ($_.CAAdministrator -notmatch 'Failure|CA Unavailable') -or ($_.CertificateManager) )
         } | ForEach-Object {
             $UnsafeCAAdministrators = Write-Output $_.CAAdministrator -PipelineVariable admin | ForEach-Object {
                 $SID = Convert-IdentityReferenceToSid -Object $admin
@@ -1822,6 +1898,7 @@ function Format-Result {
         ESC11         = 'ESC11 - IF_ENFORCEENCRYPTICERTREQUEST Flag Disabled'
         ESC13         = 'ESC13 - Vulnerable Certificate Template - Group-Linked'
         'ESC15/EKUwu' = 'ESC15 - Vulnerable Certificate Template - Schema V1'
+        ESC16         = 'ESC16 - szOID_NTDS_CA_SECURITY_EXT Extension Disabled'
     }
 
     $RiskTable = @{
@@ -1845,7 +1922,7 @@ function Format-Result {
         if ($Mode -eq 0) {
             # TODO Refactor this
             switch ($UniqueIssue) {
-                { $_ -in @('DETECT', 'ESC6', 'ESC7', 'ESC8', 'ESC11') } {
+                { $_ -in @('DETECT', 'ESC6', 'ESC7', 'ESC8', 'ESC11', 'ESC16') } {
                     $Issue |
                         Format-Table Technique, @{l = 'CA Name'; e = { $_.Name } }, @{l = 'Risk'; e = { $_.RiskName } }, Issue -Wrap |
                             Write-HostColorized -PatternColorMap $RiskTable -CaseSensitive
@@ -1864,7 +1941,7 @@ function Format-Result {
         }
         elseif ($Mode -eq 1) {
             switch ($UniqueIssue) {
-                { $_ -in @('DETECT', 'ESC6', 'ESC7', 'ESC8', 'ESC11') } {
+                { $_ -in @('DETECT', 'ESC6', 'ESC7', 'ESC8', 'ESC11', 'ESC16') } {
                     $Issue |
                         Format-List Technique, @{l = 'CA Name'; e = { $_.Name } }, @{l = 'Risk'; e = { $_.RiskName } }, DistinguishedName, Issue, Fix, @{l = 'Risk Score'; e = { $_.RiskValue } }, @{l = 'Risk Score Detail'; e = { $_.RiskScoring -join "`n" } } |
                             Write-HostColorized -PatternColorMap $RiskTable -CaseSensitive
@@ -2514,11 +2591,11 @@ function Invoke-Scans {
     .PARAMETER Scans
         Specifies the type of scans to perform. Multiple scan options can be provided as an array. The default value is 'All'.
         The available scan options are: 'Auditing', 'ESC1', 'ESC2', 'ESC3', 'ESC4', 'ESC5', 'ESC6', 'ESC8', 'ESC11',
-            'ESC13', 'ESC15, 'EKUwu', 'All', 'PromptMe'.
+            'ESC13', 'ESC15, 'EKUwu', 'ESC16', 'All', 'PromptMe'.
 
     .NOTES
         - The script requires the following functions to be defined: Find-AuditingIssue, Find-ESC1, Find-ESC2, Find-ESC3C1,
-          Find-ESC3C2, Find-ESC4, Find-ESC5, Find-ESC6, Find-ESC8, Find-ESC11, Find-ESC13, Find-ESC15
+          Find-ESC3C2, Find-ESC4, Find-ESC5, Find-ESC6, Find-ESC8, Find-ESC11, Find-ESC13, Find-ESC15, Find-ESC16
         - The script uses Out-GridView or Out-ConsoleGridView for interactive selection when the 'PromptMe' scan option is chosen.
         - The script returns a hash table containing the results of the scans.
 
@@ -2556,7 +2633,7 @@ function Invoke-Scans {
         [string]$SafeUsers,
         [Parameter(Mandatory)]
         [string]$SafeOwners,
-        [ValidateSet('Auditing', 'ESC1', 'ESC2', 'ESC3', 'ESC4', 'ESC5', 'ESC6', 'ESC7', 'ESC8', 'ESC11', 'ESC13', 'ESC15', 'EKUwu', 'All', 'PromptMe')]
+        [ValidateSet('Auditing', 'ESC1', 'ESC2', 'ESC3', 'ESC4', 'ESC5', 'ESC6', 'ESC7', 'ESC8', 'ESC11', 'ESC13', 'ESC15', 'EKUwu', 'ESC16', 'All', 'PromptMe')]
         [array]$Scans = 'All',
         [Parameter(Mandatory)]
         [string]$UnsafeUsers,
@@ -2612,7 +2689,7 @@ function Invoke-Scans {
             [array]$ESC6 = Find-ESC6 -ADCSObjects $ADCSObjects -UnsafeUsers $UnsafeUsers
         }
         ESC7 {
-            Write-Host 'Identifying Issuing CAs with ESC7...'
+            Write-Host 'Identifying Issuing CAs with Non-Standard Admins (ESC7)...'
             [array]$ESC7 = Find-ESC7 -ADCSObjects $ADCSObjects -UnsafeUsers $UnsafeUsers -SafeUsers $SafeUsers
         }
         ESC8 {
@@ -2635,6 +2712,10 @@ function Invoke-Scans {
             Write-Host 'Identifying AD CS templates with dangerous ESC15/EKUwu configurations...'
             [array]$ESC15 = Find-ESC15 -ADCSObjects $ADCSObjects -SafeUsers $SafeUsers
         }
+        ESC16 {
+            Write-Host 'Identifying Issuing CAs with szOID_NTDS_CA_SECURITY_EXT disabled (ESC16)...'
+            [array]$ESC16 = Find-ESC16 -ADCSObjects $ADCSObjects -UnsafeUsers $UnsafeUsers
+        }
         All {
             Write-Host 'Identifying auditing issues...'
             [array]$AuditingIssues = Find-AuditingIssue -ADCSObjects $ADCSObjects
@@ -2651,7 +2732,7 @@ function Invoke-Scans {
             [array]$ESC5 = Find-ESC5 -ADCSObjects $ADCSObjects -SafeUsers $SafeUsers -DangerousRights $DangerousRights -SafeOwners $SafeOwners -SafeObjectTypes $SafeObjectTypes -UnsafeUsers $UnsafeUsers
             Write-Host 'Identifying Certificate Authorities with EDITF_ATTRIBUTESUBJECTALTNAME2 enabled (ESC6)...'
             [array]$ESC6 = Find-ESC6 -ADCSObjects $ADCSObjects -UnsafeUsers $UnsafeUsers
-            Write-Host 'Identifying Certificate Authorities with ESC7...'
+            Write-Host 'Identifying Certificate Authorities with Non-Standard Admins (ESC7)...'
             [array]$ESC7 = Find-ESC7 -ADCSObjects $ADCSObjects -UnsafeUsers $UnsafeUsers -SafeUsers $SafeUsers
             Write-Host 'Identifying HTTP-based certificate enrollment interfaces (ESC8)...'
             [array]$ESC8 = Find-ESC8 -ADCSObjects $ADCSObjects -UnsafeUsers $UnsafeUsers
@@ -2661,11 +2742,12 @@ function Invoke-Scans {
             [array]$ESC13 = Find-ESC13 -ADCSObjects $ADCSObjects -SafeUsers $SafeUsers -ClientAuthEKUs $ClientAuthEkus -UnsafeUsers $UnsafeUsers
             Write-Host 'Identifying AD CS templates with dangerous ESC15 configurations...'
             [array]$ESC15 = Find-ESC15 -ADCSObjects $ADCSObjects -SafeUsers $SafeUsers -UnsafeUsers $UnsafeUsers
-            Write-Host
+            Write-Host 'Identifying Certificate Authorities with szOID_NTDS_CA_SECURITY_EXT disabled (ESC16)...'
+            [array]$ESC6 = Find-ESC16 -ADCSObjects $ADCSObjects -UnsafeUsers $UnsafeUsers
         }
     }
 
-    [array]$AllIssues = $AuditingIssues + $ESC1 + $ESC2 + $ESC3 + $ESC4 + $ESC5 + $ESC6 + $ESC7 + $ESC8 + $ESC11 + $ESC13 + $ESC15
+    [array]$AllIssues = $AuditingIssues + $ESC1 + $ESC2 + $ESC3 + $ESC4 + $ESC5 + $ESC6 + $ESC7 + $ESC8 + $ESC11 + $ESC13 + $ESC15 + $ESC16
 
     # If these are all empty = no issues found, exit
     if ($AllIssues.Count -lt 1) {
@@ -2688,6 +2770,7 @@ function Invoke-Scans {
         ESC11          = $ESC11
         ESC13          = $ESC13
         ESC15          = $ESC15
+        ESC16          = $ESC16
     }
 }
 
@@ -2787,7 +2870,7 @@ function New-Dictionary {
             Category      = 'Escalation Path'
             Subcategory   = 'Vulnerable Certificate Authority Access Control'
             Summary       = ''
-            FindIt        = { Write-Output 'We have not created Find-ESC7 yet.' }
+            FindIt        = { Find-ESC7 }
             FixIt         = { Write-Output 'Add code to fix the vulnerable configuration.' }
             ReferenceUrls = 'https://posts.specterops.io/certified-pre-owned-d95910965cd2#:~:text=Vulnerable%20Certificate%20Authority%20Access%20Control%20%E2%80%94%20ESC7'
         },
@@ -3075,6 +3158,17 @@ function Set-AdditionalCAProperty {
                     $CAAdministrator = 'Failure'
                     $CertificateManager = 'Failure'
                 }
+                try {
+                    if ($Credential) {
+                        $CertutilDisableExtensionList = Invoke-Command -ComputerName $CAHostFQDN -Credential $Credential -ScriptBlock { certutil -config $using:CAFullName -getreg policy\DisableExtensionList }
+                    }
+                    else {
+                        $CertutilDisableExtensionList = certutil -config $CAFullName -getreg policy\DisableExtensionList
+                    }
+                }
+                catch {
+                    $CertutilDisableExtensionList = 'Failure'
+                }
             }
             else {
                 $AuditFilter = 'CA Unavailable'
@@ -3082,6 +3176,7 @@ function Set-AdditionalCAProperty {
                 $InterfaceFlag = 'CA Unavailable'
                 $CAAdministrator = 'CA Unavailable'
                 $CertificateManager = 'CA Unavailable'
+                $DisableExtensionList = 'CA Unavailable'
             }
             if ($CertutilAudit) {
                 try {
@@ -3128,6 +3223,15 @@ function Set-AdditionalCAProperty {
                     }
                 }
             }
+            if ($CertutilDisableExtensionList) {
+                [string]$DisableExtensionList = $CertutilDisableExtensionList | Select-String '1\.3\.6\.1\.4\.1\.311\.25\.2'
+                if ($DisableExtensionList) {
+                    $DisableExtensionList = 'Yes'
+                }
+                else {
+                    $DisableExtensionList = 'No'
+                }
+            }
             Add-Member -InputObject $_ -MemberType NoteProperty -Name AuditFilter -Value $AuditFilter -Force
             Add-Member -InputObject $_ -MemberType NoteProperty -Name CAEnrollmentEndpoint -Value $CAEnrollmentEndpoint -Force
             Add-Member -InputObject $_ -MemberType NoteProperty -Name CAFullName -Value $CAFullName -Force
@@ -3137,6 +3241,7 @@ function Set-AdditionalCAProperty {
             Add-Member -InputObject $_ -MemberType NoteProperty -Name InterfaceFlag -Value $InterfaceFlag -Force
             Add-Member -InputObject $_ -MemberType NoteProperty -Name CAAdministrator -Value $CAAdministrator -Force
             Add-Member -InputObject $_ -MemberType NoteProperty -Name CertificateManager -Value $CertificateManager -Force
+            Add-Member -InputObject $_ -MemberType NoteProperty -Name DisableExtensionList -Value $DisableExtensionList -Force
         }
     }
 }
@@ -3244,7 +3349,7 @@ function Set-RiskRating {
     $RiskScoring = @()
 
     # CA issues don't rely on a principal and have a base risk of Medium.
-    if ($Issue.Technique -in @('DETECT', 'ESC6', 'ESC7', 'ESC8', 'ESC11')) {
+    if ($Issue.Technique -in @('DETECT', 'ESC6', 'ESC7', 'ESC8', 'ESC11', 'ESC16')) {
         $RiskValue += 3
         $RiskScoring += 'Base Score: 3'
 
@@ -3253,12 +3358,12 @@ function Set-RiskRating {
             $RiskScoring += 'HTTP Enrollment: +2'
         }
 
-        # TODO Check NtAuthCertificates for CA thumbnail. If found, +2, else -1
+        # TODO Check NtAuthCertificates for CA thumbprint. If found, +2, else -1
         # TODO Check if NTLMv1 is allowed.
     }
 
     # Template and object issues rely on a principal and have complex scoring.
-    if ($Issue.Technique -notin @('DETECT', 'ESC6', 'ESC7', 'ESC8', 'ESC11')) {
+    if ($Issue.Technique -notin @('DETECT', 'ESC6', 'ESC7', 'ESC8', 'ESC11', 'ESC16')) {
         $RiskScoring += 'Base Score: 0'
 
         # Templates are more dangerous when enabled, but objects cannot be enabled/disabled.
@@ -4532,6 +4637,7 @@ function Invoke-Locksmith {
             'ESC13',
             'ESC15',
             'EKUwu',
+            'ESC16',
             'All',
             'PromptMe'
         )]
@@ -4723,6 +4829,7 @@ function Invoke-Locksmith {
     $ESC11 = $Results['ESC11']
     $ESC13 = $Results['ESC13']
     $ESC15 = $Results['ESC15']
+    $ESC16 = $Results['ESC16']
 
     # If these are all empty = no issues found, exit
     if ($null -eq $Results) {
@@ -4746,6 +4853,7 @@ function Invoke-Locksmith {
             Format-Result -Issue $ESC11 -Mode 0
             Format-Result -Issue $ESC13 -Mode 0
             Format-Result -Issue $ESC15 -Mode 0
+            Format-Result -Issue $ESC16 -Mode 0
             Write-Host @"
 [!] You ran Locksmith in Mode 0 which only provides an high-level overview of issues
 identified in the environment. For more details including:
@@ -4776,6 +4884,7 @@ Invoke-Locksmith -Mode 1
             Format-Result -Issue $ESC11 -Mode 1
             Format-Result -Issue $ESC13 -Mode 1
             Format-Result -Issue $ESC15 -Mode 1
+            Format-Result -Issue $ESC16 -Mode 1
         }
         2 {
             $Output = Join-Path -Path $OutputPath -ChildPath "$FilePrefix ADCSIssues.CSV"

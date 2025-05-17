@@ -36,7 +36,7 @@
     process {
         $ADCSObjects | Where-Object {
             ($_.objectClass -eq 'pKIEnrollmentService') -and
-            ( ($_.CAAdministrator) -or ($_.CertificateManager) )
+            ( ($_.CAAdministrator -notmatch 'Failure|CA Unavailable') -or ($_.CertificateManager) )
         } | ForEach-Object {
             $UnsafeCAAdministrators = Write-Output $_.CAAdministrator -PipelineVariable admin | ForEach-Object {
                 $SID = Convert-IdentityReferenceToSid -Object $admin

@@ -43,6 +43,7 @@ function Format-Result {
         ESC11         = 'ESC11 - IF_ENFORCEENCRYPTICERTREQUEST Flag Disabled'
         ESC13         = 'ESC13 - Vulnerable Certificate Template - Group-Linked'
         'ESC15/EKUwu' = 'ESC15 - Vulnerable Certificate Template - Schema V1'
+        ESC16         = 'ESC16 - szOID_NTDS_CA_SECURITY_EXT Extension Disabled'
     }
 
     $RiskTable = @{
@@ -66,7 +67,7 @@ function Format-Result {
         if ($Mode -eq 0) {
             # TODO Refactor this
             switch ($UniqueIssue) {
-                { $_ -in @('DETECT', 'ESC6', 'ESC7', 'ESC8', 'ESC11') } {
+                { $_ -in @('DETECT', 'ESC6', 'ESC7', 'ESC8', 'ESC11', 'ESC16') } {
                     $Issue |
                     Format-Table Technique, @{l = 'CA Name'; e = { $_.Name } }, @{l = 'Risk'; e = { $_.RiskName } }, Issue -Wrap |
                     Write-HostColorized -PatternColorMap $RiskTable -CaseSensitive
@@ -84,7 +85,7 @@ function Format-Result {
             }
         } elseif ($Mode -eq 1) {
             switch ($UniqueIssue) {
-                { $_ -in @('DETECT', 'ESC6', 'ESC7', 'ESC8', 'ESC11') } {
+                { $_ -in @('DETECT', 'ESC6', 'ESC7', 'ESC8', 'ESC11', 'ESC16') } {
                     $Issue |
                     Format-List Technique, @{l = 'CA Name'; e = { $_.Name } }, @{l = 'Risk'; e = { $_.RiskName } }, DistinguishedName, Issue, Fix, @{l = 'Risk Score'; e = { $_.RiskValue } }, @{l = 'Risk Score Detail'; e = { $_.RiskScoring -join "`n" } } |
                     Write-HostColorized -PatternColorMap $RiskTable -CaseSensitive
