@@ -1522,7 +1522,8 @@ function Find-ESC7 {
                 }
                 if ($UnsafeCAAdministrators) {
                     $Issue.Issue = $Issue.Issue + @"
-Unexpected prinicipals ($($UnsafeCAAdministrators -join ', ')) are granted "CA Administrator" rights on this Certification Authority.
+Unexpected principals are granted "CA Administrator" rights on this Certification Authority.
+Unsafe CA Administrators: $($UnsafeCAAdministrators -join ', ').
 
 "@
                     $Issue.Fix = $Issue.Fix + @"
@@ -1536,15 +1537,16 @@ Reinstate CA Administrator rights for $($UnsafeCAAdministrators -join ', ')
                 }
                 if ($UnsafeCertificateManagers) {
                     $Issue.Issue = $Issue.Issue + @"
-Unexpected prinicipals ($($UnsafeCertificateManagers -join ', ')) are granted "Certificate Manager" rights on this Certification Authority.
+Unexpected principals are granted "Certificate Manager" rights on this Certification Authority.
+Unexpected Principals: $($UnsafeCertificateManagers -join ', ')
 
 "@
                     $Issue.Fix = $Issue.Fix + @"
-Revoke CA Administrator rights from $($UnsafeCertificateManagers -join ', ')
+Revoke Certificate Manager rights from $($UnsafeCertificateManagers -join ', ')
 
 "@
                     $Issue.Revert = $Issue.Revert + @"
-Reinstate CA Administrator rights for $($UnsafeCertificateManagers -join ', ')
+Reinstate Certificate Manager rights for $($UnsafeCertificateManagers -join ', ')
 
 "@
                 }
@@ -4547,7 +4549,7 @@ function Invoke-Locksmith {
         [System.Management.Automation.PSCredential]$Credential
     )
 
-    $Version = '2025.5.17'
+    $Version = '2025.5.18'
     $LogoPart1 = @'
     _       _____  _______ _     _ _______ _______ _____ _______ _     _
     |      |     | |       |____/  |______ |  |  |   |      |    |_____|
