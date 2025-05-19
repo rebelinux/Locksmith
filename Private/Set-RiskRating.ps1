@@ -55,7 +55,7 @@ function Set-RiskRating {
     $RiskScoring = @()
 
     # CA issues don't rely on a principal and have a base risk of Medium.
-    if ($Issue.Technique -in @('DETECT', 'ESC6', 'ESC7', 'ESC8', 'ESC11')) {
+    if ($Issue.Technique -in @('DETECT', 'ESC6', 'ESC7', 'ESC8', 'ESC11', 'ESC16')) {
         $RiskValue += 3
         $RiskScoring += 'Base Score: 3'
 
@@ -64,12 +64,12 @@ function Set-RiskRating {
             $RiskScoring += 'HTTP Enrollment: +2'
         }
 
-        # TODO Check NtAuthCertificates for CA thumbnail. If found, +2, else -1
+        # TODO Check NtAuthCertificates for CA thumbprint. If found, +2, else -1
         # TODO Check if NTLMv1 is allowed.
     }
 
     # Template and object issues rely on a principal and have complex scoring.
-    if ($Issue.Technique -notin @('DETECT', 'ESC6', 'ESC7', 'ESC8', 'ESC11')) {
+    if ($Issue.Technique -notin @('DETECT', 'ESC6', 'ESC7', 'ESC8', 'ESC11', 'ESC16')) {
         $RiskScoring += 'Base Score: 0'
 
         # Templates are more dangerous when enabled, but objects cannot be enabled/disabled.
