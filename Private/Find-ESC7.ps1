@@ -35,7 +35,7 @@
     )
     process {
         $ADCSObjects | Where-Object {
-            ($_.objectClass -eq 'pKIEnrollmentService') -and
+            ($_.objectClass -eq 'pKIEnrollmentService') -and $_.CAHostDistinguishedName -and
             ( ($_.CAAdministrator) -or ($_.CertificateManager) )
         } | ForEach-Object {
             $UnsafeCAAdministrators = Write-Output $_.CAAdministrator -PipelineVariable admin | ForEach-Object {
@@ -64,8 +64,7 @@
                 }
                 if ($UnsafeCAAdministrators) {
                     $Issue.Issue = $Issue.Issue + @"
-Unexpected principals are granted "CA Administrator" rights on this Certification Authority.
-Unsafe CA Administrators: $($UnsafeCAAdministrators -join ', ').
+Unexpected prinicipals ($($UnsafeCAAdministrators -join ', ')) are granted "CA Administrator" rights on this Certification Authority.
 
 "@
                     $Issue.Fix = $Issue.Fix + @"
@@ -79,16 +78,15 @@ Reinstate CA Administrator rights for $($UnsafeCAAdministrators -join ', ')
                 }
                 if ($UnsafeCertificateManagers) {
                     $Issue.Issue = $Issue.Issue + @"
-Unexpected principals are granted "Certificate Manager" rights on this Certification Authority.
-Unexpected Principals: $($UnsafeCertificateManagers -join ', ')
+Unexpected prinicipals ($($UnsafeCertificateManagers -join ', ')) are granted "Certificate Manager" rights on this Certification Authority.
 
 "@
                     $Issue.Fix = $Issue.Fix + @"
-Revoke Certificate Manager rights from $($UnsafeCertificateManagers -join ', ')
+Revoke CA Administrator rights from $($UnsafeCertificateManagers -join ', ')
 
 "@
                     $Issue.Revert = $Issue.Revert + @"
-Reinstate Certificate Manager rights for $($UnsafeCertificateManagers -join ', ')
+Reinstate CA Administrator rights for $($UnsafeCertificateManagers -join ', ')
 
 "@
                 }
