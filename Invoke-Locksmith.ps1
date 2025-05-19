@@ -1569,8 +1569,8 @@ function Find-ESC7 {
     )
     process {
         $ADCSObjects | Where-Object {
-            ($_.objectClass -eq 'pKIEnrollmentService') -and
-            ( ($_.CAAdministrator -notmatch 'Failure|CA Unavailable') -or ($_.CertificateManager) )
+            ($_.objectClass -eq 'pKIEnrollmentService') -and $_.CAHostDistinguishedName -and
+            ( ($_.CAAdministrator) -or ($_.CertificateManager) )
         } | ForEach-Object {
             $UnsafeCAAdministrators = Write-Output $_.CAAdministrator -PipelineVariable admin | ForEach-Object {
                 $SID = Convert-IdentityReferenceToSid -Object $admin
@@ -1613,7 +1613,7 @@ Reinstate CA Administrator rights for $($UnsafeCAAdministrators -join ', ')
                 }
                 if ($UnsafeCertificateManagers) {
                     $Issue.Issue = $Issue.Issue + @"
-Unexpected principals are granted "Certificate Manager" rights on this Certification Authority.
+expected principals are granted "Certificate Manager" rights on this Certification Authority.
 Unexpected Principals: $($UnsafeCertificateManagers -join ', ')
 
 "@
@@ -2044,12 +2044,22 @@ function Get-CAHostObject {
     process {
         if ($Credential) {
             $ADCSObjects | Where-Object objectClass -Match 'pKIEnrollmentService' | ForEach-Object {
-                Get-ADObject $_.CAHostDistinguishedName -Properties * -Server $ForestGC -Credential $Credential
+                if ($_.CAHostDistinguishedName) {
+                    Get-ADObject $_.CAHostDistinguishedName -Properties * -Server $ForestGC -Credential $Credential 
+                }
+                else {
+                    Write-Warning "Get-CAHostObject: Unable to get information from $($_.DisplayName)" 
+                }
             }
         }
         else {
             $ADCSObjects | Where-Object objectClass -Match 'pKIEnrollmentService' | ForEach-Object {
-                Get-ADObject $_.CAHostDistinguishedName -Properties * -Server $ForestGC
+                if ($_.CAHostDistinguishedName) {
+                    Get-ADObject -Identity $_.CAHostDistinguishedName -Properties * -Server $ForestGC 
+                }
+                else {
+                    Write-Warning "Get-CAHostObject: Unable to get information from $($_.DisplayName)" 
+                }
             }
         }
     }
