@@ -144,7 +144,7 @@ Example Output for Mode 4: <https://github.com/jakehildreth/Locksmith/blob/main/
 <a name="Scans" id="Scans"></a>
 
 ### Scans: Select Which Scans to Invoke
-Use the `-Scans` parameter to choose which vulnerabilities to scan for. Acceptable values include `All`, `Auditing`, `ESC1`, `ESC2`, `ESC3`, `ESC4`, `ESC5`, `ESC6`, `ESC8`, `ESC11`, `ESC13`, `ESC15`, `EKEUwu`, or `PromptMe`. The `PromptMe` option presents an interactive list allowing you to select one or more scans.
+Use the `-Scans` parameter to choose which vulnerabilities to scan for. Acceptable values include `All`, `Auditing`, `ESC1`, `ESC2`, `ESC3`, `ESC4`, `ESC5`, `ESC6`, `ESC7`, `ESC8`, `ESC11`, `ESC13`, `ESC15`, `EKEUwu`, `ESC16` or `PromptMe`. The `PromptMe` option presents an interactive list allowing you to select one or more scans.
 
 ``` powershell
 # Run all scans
