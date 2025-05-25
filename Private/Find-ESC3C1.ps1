@@ -60,7 +60,7 @@
 $($entry.IdentityReference) can use this template to request an Enrollment Agent
 certificate without Manager Approval.
 
-The resulting certificate can be used to enroll in any template that requires
+The resulting certificate can be used to enroll in any template that allows
 an Enrollment Agent to submit the request.
 
 More info:
