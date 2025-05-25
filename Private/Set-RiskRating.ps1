@@ -64,6 +64,20 @@ function Set-RiskRating {
             $RiskScoring += 'HTTP Enrollment: +2'
         }
 
+        # Modifiers that rely on the existence of other ESCs
+        if ($Issue.Technique -eq 'ESC6') {
+            [array]$ESC9 = Find-ESC9 -ADCSObjects $ADCSObjects -SafeUsers $SafeUsers -ClientAuthEKUs $ClientAuthEkus -UnsafeUsers $UnsafeUsers
+            [array]$ESC16 = Find-ESC16 -ADCSObjects $ADCSObjects -UnsafeUsers $UnsafeUsers
+            $ESC9and16 = $ESC9 + $ESC16
+            if ($ESC9and16) {
+                $RiskValue += 2
+                $RiskScoring += "Additional risky configurations exist which make this issue more severe: +2"
+                foreach($otherIssue in $ESC9and16) {
+                    $RiskScoring += "  - $($otherIssue.Technique) exists on $($otherIssue.Name)"
+                }
+            } # end if ($ESC9and16)
+        }
+
         # TODO Check NtAuthCertificates for CA thumbprint. If found, +2, else -1
         # TODO Check if NTLMv1 is allowed.
     }
@@ -90,7 +104,7 @@ function Set-RiskRating {
         # ESC1 and ESC4 templates are more dangerous than other templates because they can result in immediate compromise.
         if ($Issue.Technique -in @('ESC1', 'ESC4')) {
             $RiskValue += 1
-            $RiskScoring += 'ESC1/4: +1'
+            $RiskScoring += "$($Issue.Technique) +1"
         }
 
         if ($Issue.IdentityReferenceSID -match $UnsafeUsers) {
@@ -103,8 +117,8 @@ function Set-RiskRating {
             $RiskScoring += 'Group: +1'
         }
 
-        # Safe users and managed service accounts are inherently safer than other principals - except in ESC3 Condition 2!
-        if ($Issue.Technique -eq 'ESC3' -and $Issue.Condition -eq 2) {
+        # Safe users and managed service accounts are inherently safer than other principals - except in ESC3 Condition 2 and ESC9!
+        if (($Issue.Technique -eq 'ESC9') -or ($Issue.Technique -eq 'ESC3' -and $Issue.Condition -eq 2)) {
             if ($Issue.IdentityReferenceSID -match $SafeUsers) {
                 # Safe Users are admins. Authenticating as an admin is bad.
                 $RiskValue += 2
@@ -294,8 +308,8 @@ function Set-RiskRating {
             $RiskValue += $OtherTemplateRisk
         }
 
-        # Disabled ESC1, ESC2, ESC3, ESC4, and ESC15 templates are more dangerous if there's an ESC5 on one or more CA objects
-        if ($Issue.Technique -match 'ESC1|ESC2|ESC3|ESC4' -and $Issue.Enabled -eq $false ) {
+        # Disabled ESC1, ESC2, ESC3, ESC4, ESC9, and ESC15 templates are more dangerous if there's an ESC5 on one or more CA objects
+        if ($Issue.Technique -match 'ESC1|ESC2|ESC3|ESC4|ESC9' -and $Issue.Enabled -eq $false ) {
             $ESC5 = Find-ESC5 -ADCSObjects $ADCSObjects -SafeUsers $SafeUsers -UnsafeUsers $UnsafeUsers -DangerousRights $DangerousRights -SafeOwners '-519$' -SafeObjectTypes $SafeObjectTypes -SkipRisk |
             Where-Object { $_.objectClass -eq 'pKIEnrollmentService' }
             $ESC5Names = @(($ESC5 | Select-Object -Property Name -Unique).Name)
@@ -354,6 +368,18 @@ function Set-RiskRating {
                 'container' { $RiskValue += 1; $RiskScoring += 'Container: +1' }
             }
         }
+    }
+
+    # ESC9/ESC16 are much more dangerous when ESC6 exists
+    if ($Issue.Technique -match 'ESC9|ESC16') {
+        $ESC6 = Find-ESC6 -ADCSObjects $ADCSObjects -UnsafeUsers $UnsafeUsers -SkipRisk
+        if ($ESC6) {
+            $RiskValue += 2
+            $RiskScoring += "One or more CAs have an ESC6: +2"
+            foreach($ca in $ESC6.CAFullName) {
+                $RiskScoring += "  - ESC6 exists on $ca"
+            }
+        } # end if ($ESC6)
     }
 
     # Convert Value to Name

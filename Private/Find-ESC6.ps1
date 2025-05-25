@@ -37,6 +37,7 @@
             $Issue = [pscustomobject]@{
                 Forest            = $_.CanonicalName.split('/')[0]
                 Name              = $_.Name
+                CAFullname        = $CAFullName
                 DistinguishedName = $_.DistinguishedName
                 Issue             = $_.SANFlag
                 Fix               = 'N/A'

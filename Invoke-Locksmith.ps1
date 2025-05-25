@@ -7,7 +7,7 @@ param (
 
     # The scans to run. Defaults to 'All'.
     [Parameter()]
-    [ValidateSet('Auditing', 'ESC1', 'ESC2', 'ESC3', 'ESC4', 'ESC5', 'ESC6', 'ESC7', 'ESC8', 'ESC11', 'ESC13', 'ESC15', 'EKUwu', 'ESC16', 'All', 'PromptMe')]
+    [ValidateSet('Auditing', 'ESC1', 'ESC2', 'ESC3', 'ESC4', 'ESC5', 'ESC6', 'ESC7', 'ESC8', 'ESC9', 'ESC11', 'ESC13', 'ESC15', 'EKUwu', 'ESC16', 'All', 'PromptMe')]
     [array]$Scans = 'All'
 )
 function Convert-IdentityReferenceToSid {
@@ -1482,6 +1482,7 @@ function Find-ESC6 {
             $Issue = [pscustomobject]@{
                 Forest            = $_.CanonicalName.split('/')[0]
                 Name              = $_.Name
+                CAFullname        = $CAFullName
                 DistinguishedName = $_.DistinguishedName
                 Issue             = $_.SANFlag
                 Fix               = 'N/A'
@@ -1738,119 +1739,115 @@ Disable NTLM authentication (if possible.)
     }
 }
 
-<#
-    This is a working POC. I need to test both checks and possibly blend pieces of them.
-    Then I need to fold this function into the Locksmith workflow.
-#>
-
 function Find-ESC9 {
     <#
     .SYNOPSIS
-        Checks for ESC9 (No Security Extension) Vulnerability
+        This function finds Active Directory Certificate Services (AD CS)  objects that have the ESC9 vulnerability.
 
     .DESCRIPTION
-        This function checks for certificate templates that contain the flag CT_FLAG_NO_SECURITY_EXTENSION (0x80000),
-        which will likely make them vulnerable to ESC9. Another factor to check for ESC9 is the registry values on AD
-        domain controllers that can help harden certificate based authentication for Kerberos and SChannel.
+        The script takes an array of ADCS objects as input and filters them based on the specified conditions.
+        For each matching object, it creates a custom object with properties representing various information about
+        the object, such as Forest, Name, DistinguishedName, IdentityReference, ActiveDirectoryRights, Issue, Fix, Revert, and Technique.
 
-    .NOTES
-        An ESC9 condition exists when:
+    .PARAMETER ADCSObjects
+        Specifies the array of ADCS objects to be processed. This parameter is mandatory.
 
-        - the new msPKI-Enrollment-Flag value on a certificate contains the flag CT_FLAG_NO_SECURITY_EXTENSION (0x80000)
-        - AND an insecure registry value is set on domain controllers:
+    .PARAMETER SafeUsers
+        Specifies the list of SIDs of safe users who are allowed to have specific rights on the objects. This parameter is mandatory.
 
-          - the StrongCertificateBindingEnforcement registry value for Kerberos is not set to 2 (the default is 1) on domain controllers
-            at HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Kdc
-          - OR the CertificateMappingMethods registry value for SCHANNEL contains the UPN flag on domain controllers at
-            HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurityProviders\Schannel
+    .PARAMETER UnsafeUsers
+        Specifies the list of SIDs of safe users who should never have specific rights on the objects. This parameter is mandatory.
 
-        When the CT_FLAG_NO_SECURITY_EXTENSION (0x80000) flag is set on a certificate template, the new szOID_NTDS_CA_SECURITY_EXT
-        security extension will not be embedded in issued certificates. This security extension was added by Microsoft's
-        patch KB5014754 ("Certificate-based authentication changes on Windows domain controllers") on May 10, 2022.
+    .PARAMETER ClientAuthEKUs
+        A list of EKUs that can be used for client authentication.
 
-        The patch applies to all servers that run Active Directory Certificate Services and Windows domain controllers that
-        service certificate-based authentication.
-        https://support.microsoft.com/en-us/topic/kb5014754-certificate-based-authentication-changes-on-windows-domain-controllers-ad2c23b0-15d8-4340-a468-4d4f3b188f16
+    .OUTPUTS
+        The script outputs an array of custom objects representing the matching ADCS objects and their associated information.
 
-        Based on research from
-        https://research.ifcr.dk/certipy-4-0-esc9-esc10-bloodhound-gui-new-authentication-and-request-methods-and-more-7237d88061f7,
-        https://support.microsoft.com/en-us/topic/kb5014754-certificate-based-authentication-changes-on-windows-domain-controllers-ad2c23b0-15d8-4340-a468-4d4f3b188f16,
-        and on a very long conversation with Bing Chat.
-
-        Additional notes from Cortana -- Bing when I pressed her to  tell me whether both conditions were required for ESC9 or only one of them:
-            A certificate template can still be vulnerable to ESC9 even if the msPKI-Enrollment-Flag does not include
-            CT_FLAG_NO_SECURITY_EXTENSION. This is because the vulnerability primarily arises from the ability of a
-            requester to specify the subjectAltName in a Certificate Signing Request (CSR). If a requester can specify
-            the subjectAltName in a CSR, they can request a certificate as anyone, including a domain admin user.
-            Therefore, if a certificate template allows requesters to specify a subjectAltName and
-            StrongCertificateBindingEnforcement is not set to 2, it could potentially be vulnerable to ESC9. However,
-            the presence of CT_FLAG_NO_SECURITY_EXTENSION in msPKI-Enrollment-Flag is a clear indicator of a template
-            being vulnerable to ESC9.
-#>
-
+    .EXAMPLE
+        $Targets = Get-Target
+        $ADCSObjects = Get-ADCSObject -Targets $Targets
+        $SafeUsers = '-512$|-519$|-544$|-18$|-517$|-500$|-516$|-521$|-498$|-9$|-526$|-527$|S-1-5-10'
+        $ClientAuthEKUs = '1\.3\.6\.1\.5\.5\.7\.3\.2|1\.3\.6\.1\.5\.2\.3\.4|1\.3\.6\.1\.4\.1\.311\.20\.2\.2|2\.5\.29\.37\.0'
+        $Results = Find-ESC1 -ADCSObjects $ADCSObjects -SafeUsers $SafeUsers -ClientAuthEKUs $ClientAuthEKUs
+        $Results
+    #>
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
         [Microsoft.ActiveDirectory.Management.ADEntity[]]$ADCSObjects,
         [Parameter(Mandatory)]
+        [string]$SafeUsers,
+        [Parameter(Mandatory)]
+        $ClientAuthEKUs,
+        [int]$Mode = 0,
+        [Parameter(Mandatory)]
         [string]$UnsafeUsers,
         [switch]$SkipRisk
     )
-
-    # Import the required module
-    Import-Module ActiveDirectory
-
-    # Get the configuration naming context
-    $configNC = (Get-ADRootDSE).configurationNamingContext
-
-    # Define the path to the Certificate Templates container
-    $path = "CN=Certificate Templates,CN=Public Key Services,CN=Services,$configNC"
-
-    # Get all certificate templates
-    $templates = Get-ADObject -Filter * -SearchBase $path -Properties msPKI-Enrollment-Flag, msPKI-Certificate-Name-Flag
-
-    foreach ($template in $templates) {
-        # Check if msPKI-Enrollment-Flag contains the CT_FLAG_NO_SECURITY_EXTENSION (0x80000) flag
-        if ($template.'msPKI-Enrollment-Flag' -band 0x80000) {
-            # Check if msPKI-Certificate-Name-Flag contains the CT_FLAG_ENROLLEE_SUPPLIES_SUBJECT_ALT_NAME (0x2) flag
-            if ($template.'msPKI-Certificate-Name-Flag' -band 0x2) {
-                # Output the template name
-                Write-Output "Template Name: $($template.Name), Vulnerable to ESC9"
+    $ADCSObjects | Where-Object {
+        ($_.objectClass -eq 'pKICertificateTemplate') -and
+        ($_.pkiExtendedKeyUsage -match $ClientAuthEKUs) -and
+        ($_.'msPKI-Enrollment-Flag' -band 0x80000)
+    } | ForEach-Object {
+        foreach ($entry in $_.nTSecurityDescriptor.Access) {
+            $Principal = New-Object System.Security.Principal.NTAccount($entry.IdentityReference)
+            if ($Principal -match '^(S-1|O:)') {
+                $SID = $Principal
             }
-        }
-    }
+            else {
+                $SID = ($Principal.Translate([System.Security.Principal.SecurityIdentifier])).Value
+            }
+            if ( ($SID -notmatch $SafeUsers) -and ( ($entry.ActiveDirectoryRights -match 'ExtendedRight') -or ($entry.ActiveDirectoryRights -match 'GenericAll') ) ) {
+                $Issue = [pscustomobject]@{
+                    Forest                = $_.CanonicalName.split('/')[0]
+                    Name                  = $_.Name
+                    DistinguishedName     = $_.DistinguishedName
+                    IdentityReference     = $entry.IdentityReference
+                    IdentityReferenceSID  = $SID
+                    ActiveDirectoryRights = $entry.ActiveDirectoryRights
+                    Enabled               = $_.Enabled
+                    EnabledOn             = $_.EnabledOn
+                    Issue                 = @"
+This Client Authentication template has the szOID_NTDS_CA_SECURITY_EXT security
+extension disabled. Certificates issued from this template will not enforce
+strong certificate binding. Depending on the current Certificate Binding
+Enforcement level ESC6 status, it may be possible to request and receive
+certificates that rely on weak (aka attacker-controllable) binding methods.
 
-    # AND / OR / ALSO
+An attacker can abuse this weakness by:
+1. Getting access to a user or computer account.
+2. Modifying the user's userPrincipalName attribute (or the computer's dNSHostName attribute) to match a higher-privileged account.
+3. Requesting a client authentication certificate from a template that w/ szOID_NTDS_CA_SECURITY_EXT disabled.
+4. Using the client authentication certificiate to authenticate as the higher-privileged account.
+5. Profiting.
 
-    Import-Module ActiveDirectory
+More info:
+  - ESC9 description: https://github.com/ly4k/Certipy/wiki/06-%E2%80%90-Privilege-Escalation#esc9-no-security-extension-on-certificate-template
+  - Strong Mapping/Enforcement Mode: https://support.microsoft.com/en-us/topic/kb5014754-certificate-based-authentication-changes-on-windows-domain-controllers-ad2c23b0-15d8-4340-a468-4d4f3b188f16
 
-    $templates = Get-ADObject -Filter { ObjectClass -eq 'pKICertificateTemplate' } -Properties *
-    foreach ($template in $templates) {
-        $name = $template.Name
+"@
+                    Fix                   = @"
+# Enable Manager Approval
+`$Object = '$($_.DistinguishedName)'
+Get-ADObject `$Object | Set-ADObject -Replace @{'msPKI-Enrollment-Flag' = 2}
+"@
+                    Revert                = @"
+# Disable Manager Approval
+`$Object = '$($_.DistinguishedName)'
+Get-ADObject `$Object | Set-ADObject -Replace @{'msPKI-Enrollment-Flag' = 0}
+"@
+                    Technique             = 'ESC9'
+                }
 
-        $subjectNameFlag = $template.'msPKI-Cert-Template-OID'
-        $subjectType = $template.'msPKI-Certificate-Application-Policy'
-        $enrollmentFlag = $template.'msPKI-Enrollment-Flag'
-        $certificateNameFlag = $template.'msPKI-Certificate-Name-Flag'
-
-        # Check if the template is vulnerable to ESC9
-        if ($subjectNameFlag -eq 'Supply in the request' -and
-                ($subjectType -eq 'User' -or $subjectType -eq 'Computer') -and
-            # 0x200 means a certificate needs to include a template name certificate extension
-            # 0x220 instructs the client to perform auto-enrollment for the specified template
-                ($enrollmentFlag -eq 0x200 -or $enrollmentFlag -eq 0x220) -and
-            # 0x2 instructs the client to supply subject information in the certificate request (CT_FLAG_ENROLLEE_SUPPLIES_SUBJECT).
-            #   This means that any user who is allowed to enroll in a certificate with this setting can request a certificate as any
-            #   user in the network, including a privileged user.
-            # 0x3 instructs the client to supply both the subject and subject alternate name information in the certificate request
-                ($certificateNameFlag -eq 0x2 -or $certificateNameFlag -eq 0x3)) {
-
-            # Print the template name and the vulnerability
-            Write-Output "$name is vulnerable to ESC9"
-        }
-        else {
-            # Print the template name and the status
-            Write-Output "$name is not vulnerable to ESC9"
+                if ( $Mode -in @(1, 3, 4) ) {
+                    Update-ESC9Remediation -Issue $Issue
+                }
+                if ($SkipRisk -eq $false) {
+                    Set-RiskRating -ADCSObjects $ADCSObjects -Issue $Issue -SafeUsers $SafeUsers -UnsafeUsers $UnsafeUsers
+                }
+                $Issue
+            }
         }
     }
 }
@@ -1897,10 +1894,11 @@ function Format-Result {
         ESC6          = 'ESC6 - EDITF_ATTRIBUTESUBJECTALTNAME2 Flag Enabled'
         ESC7          = 'ESC7 - Non-standard PKI Admins'
         ESC8          = 'ESC8 - HTTP/S Enrollment Enabled'
+        ESC9          = 'ESC9 - szOID_NTDS_CA_SECURITY_EXT Extension Disabled on Template'
         ESC11         = 'ESC11 - IF_ENFORCEENCRYPTICERTREQUEST Flag Disabled'
         ESC13         = 'ESC13 - Vulnerable Certificate Template - Group-Linked'
         'ESC15/EKUwu' = 'ESC15 - Vulnerable Certificate Template - Schema V1'
-        ESC16         = 'ESC16 - szOID_NTDS_CA_SECURITY_EXT Extension Disabled'
+        ESC16         = 'ESC16 - szOID_NTDS_CA_SECURITY_EXT Extension Disabled on CA'
     }
 
     $RiskTable = @{
@@ -1929,7 +1927,7 @@ function Format-Result {
                         Format-Table Technique, @{l = 'CA Name'; e = { $_.Name } }, @{l = 'Risk'; e = { $_.RiskName } }, Issue -Wrap |
                             Write-HostColorized -PatternColorMap $RiskTable -CaseSensitive
                 }
-                { $_ -in @('ESC1', 'ESC2', 'ESC3', 'ESC4', 'ESC13', 'ESC15/EKUwu') } {
+                { $_ -in @('ESC1', 'ESC2', 'ESC3', 'ESC4', 'ESC9', 'ESC13', 'ESC15/EKUwu') } {
                     $Issue |
                         Format-Table Technique, @{l = 'Template Name'; e = { $_.Name } }, @{l = 'Risk'; e = { $_.RiskName } }, Enabled, Issue -Wrap |
                             Write-HostColorized -PatternColorMap $RiskTable -CaseSensitive
@@ -1948,7 +1946,7 @@ function Format-Result {
                         Format-List Technique, @{l = 'CA Name'; e = { $_.Name } }, @{l = 'Risk'; e = { $_.RiskName } }, DistinguishedName, Issue, Fix, @{l = 'Risk Score'; e = { $_.RiskValue } }, @{l = 'Risk Score Detail'; e = { $_.RiskScoring -join "`n" } } |
                             Write-HostColorized -PatternColorMap $RiskTable -CaseSensitive
                 }
-                { $_ -in @('ESC1', 'ESC2', 'ESC3', 'ESC4', 'ESC13', 'ESC15/EKUwu') } {
+                { $_ -in @('ESC1', 'ESC2', 'ESC3', 'ESC4', 'ESC9', 'ESC13', 'ESC15/EKUwu') } {
                     $Issue |
                         Format-List Technique, @{l = 'Template Name'; e = { $_.Name } }, @{l = 'Risk'; e = { $_.RiskName } }, DistinguishedName, Enabled, EnabledOn, Issue, Fix, @{l = 'Risk Score'; e = { $_.RiskValue } }, @{l = 'Risk Score Detail'; e = { $_.RiskScoring -join "`n" } } |
                             Write-HostColorized -PatternColorMap $RiskTable -CaseSensitive
@@ -2602,12 +2600,12 @@ function Invoke-Scans {
 
     .PARAMETER Scans
         Specifies the type of scans to perform. Multiple scan options can be provided as an array. The default value is 'All'.
-        The available scan options are: 'Auditing', 'ESC1', 'ESC2', 'ESC3', 'ESC4', 'ESC5', 'ESC6', 'ESC8', 'ESC11',
+        The available scan options are: 'Auditing', 'ESC1', 'ESC2', 'ESC3', 'ESC4', 'ESC5', 'ESC6', 'ESC8', 'ESC9', 'ESC11',
             'ESC13', 'ESC15, 'EKUwu', 'ESC16', 'All', 'PromptMe'.
 
     .NOTES
         - The script requires the following functions to be defined: Find-AuditingIssue, Find-ESC1, Find-ESC2, Find-ESC3C1,
-          Find-ESC3C2, Find-ESC4, Find-ESC5, Find-ESC6, Find-ESC8, Find-ESC11, Find-ESC13, Find-ESC15, Find-ESC16
+          Find-ESC3C2, Find-ESC4, Find-ESC5, Find-ESC6, Find-ESC8, Find-ESC9, Find-ESC11, Find-ESC13, Find-ESC15, Find-ESC16
         - The script uses Out-GridView or Out-ConsoleGridView for interactive selection when the 'PromptMe' scan option is chosen.
         - The script returns a hash table containing the results of the scans.
 
@@ -2645,7 +2643,7 @@ function Invoke-Scans {
         [string]$SafeUsers,
         [Parameter(Mandatory)]
         [string]$SafeOwners,
-        [ValidateSet('Auditing', 'ESC1', 'ESC2', 'ESC3', 'ESC4', 'ESC5', 'ESC6', 'ESC7', 'ESC8', 'ESC11', 'ESC13', 'ESC15', 'EKUwu', 'ESC16', 'All', 'PromptMe')]
+        [ValidateSet('Auditing', 'ESC1', 'ESC2', 'ESC3', 'ESC4', 'ESC5', 'ESC6', 'ESC7', 'ESC8', 'ESC9', 'ESC11', 'ESC13', 'ESC15', 'EKUwu', 'ESC16', 'All', 'PromptMe')]
         [array]$Scans = 'All',
         [Parameter(Mandatory)]
         [string]$UnsafeUsers,
@@ -2708,6 +2706,10 @@ function Invoke-Scans {
             Write-Host 'Identifying HTTP-based certificate enrollment interfaces (ESC8)...'
             [array]$ESC8 = Find-ESC8 -ADCSObjects $ADCSObjects -UnsafeUsers $UnsafeUsers
         }
+        ESC9 {
+            Write-Host 'Identifying AD CS templates with szOID_NTDS_CA_SECURITY_EXT disabled (ESC9)...'
+            [array]$ESC9 = Find-ESC9 -ADCSObjects $ADCSObjects -SafeUsers $SafeUsers -ClientAuthEKUs $ClientAuthEkus -Mode $Mode -UnsafeUsers $UnsafeUsers
+        }
         ESC11 {
             Write-Host 'Identifying Issuing CAs with IF_ENFORCEENCRYPTICERTREQUEST disabled (ESC11)...'
             [array]$ESC11 = Find-ESC11 -ADCSObjects $ADCSObjects -UnsafeUsers $UnsafeUsers
@@ -2748,6 +2750,8 @@ function Invoke-Scans {
             [array]$ESC7 = Find-ESC7 -ADCSObjects $ADCSObjects -UnsafeUsers $UnsafeUsers -SafeUsers $SafeUsers
             Write-Host 'Identifying HTTP-based certificate enrollment interfaces (ESC8)...'
             [array]$ESC8 = Find-ESC8 -ADCSObjects $ADCSObjects -UnsafeUsers $UnsafeUsers
+            Write-Host 'Identifying AD CS templates with szOID_NTDS_CA_SECURITY_EXT disabled (ESC9)...'
+            [array]$ESC9 = Find-ESC9 -ADCSObjects $ADCSObjects -SafeUsers $SafeUsers -ClientAuthEKUs $ClientAuthEkus -Mode $Mode -UnsafeUsers $UnsafeUsers
             Write-Host 'Identifying Certificate Authorities with IF_ENFORCEENCRYPTICERTREQUEST disabled (ESC11)...'
             [array]$ESC11 = Find-ESC11 -ADCSObjects $ADCSObjects -UnsafeUsers $UnsafeUsers
             Write-Host 'Identifying AD CS templates with dangerous ESC13 configurations...'
@@ -2759,11 +2763,11 @@ function Invoke-Scans {
         }
     }
 
-    [array]$AllIssues = $AuditingIssues + $ESC1 + $ESC2 + $ESC3 + $ESC4 + $ESC5 + $ESC6 + $ESC7 + $ESC8 + $ESC11 + $ESC13 + $ESC15 + $ESC16
+    [array]$AllIssues = $AuditingIssues + $ESC1 + $ESC2 + $ESC3 + $ESC4 + $ESC5 + $ESC6 + $ESC7 + $ESC8 + $ESC9 + $ESC11 + $ESC13 + $ESC15 + $ESC16
 
     # If these are all empty = no issues found, exit
     if ($AllIssues.Count -lt 1) {
-        Write-Host "`n$(Get-Date) : No ADCS issues were found." -ForegroundColor Green
+        Write-Host "`n$(Get-Date) : No ADCS issues were found. :)" -ForegroundColor Green
         break
     }
 
@@ -2779,6 +2783,7 @@ function Invoke-Scans {
         ESC6           = $ESC6
         ESC7           = $ESC7
         ESC8           = $ESC8
+        ESC9           = $ESC9
         ESC11          = $ESC11
         ESC13          = $ESC13
         ESC15          = $ESC15
@@ -3370,6 +3375,20 @@ function Set-RiskRating {
             $RiskScoring += 'HTTP Enrollment: +2'
         }
 
+        # Modifiers that rely on the existence of other ESCs
+        if ($Issue.Technique -eq 'ESC6') {
+            [array]$ESC9 = Find-ESC9 -ADCSObjects $ADCSObjects -SafeUsers $SafeUsers -ClientAuthEKUs $ClientAuthEkus -UnsafeUsers $UnsafeUsers
+            [array]$ESC16 = Find-ESC16 -ADCSObjects $ADCSObjects -UnsafeUsers $UnsafeUsers
+            $ESC9and16 = $ESC9 + $ESC16
+            if ($ESC9and16) {
+                $RiskValue += 2
+                $RiskScoring += "Additional risky configurations exist which make this issue more severe: +2"
+                foreach ($otherIssue in $ESC9and16) {
+                    $RiskScoring += "  - $($otherIssue.Technique) exists on $($otherIssue.Name)"
+                }
+            } # end if ($ESC9and16)
+        }
+
         # TODO Check NtAuthCertificates for CA thumbprint. If found, +2, else -1
         # TODO Check if NTLMv1 is allowed.
     }
@@ -3397,7 +3416,7 @@ function Set-RiskRating {
         # ESC1 and ESC4 templates are more dangerous than other templates because they can result in immediate compromise.
         if ($Issue.Technique -in @('ESC1', 'ESC4')) {
             $RiskValue += 1
-            $RiskScoring += 'ESC1/4: +1'
+            $RiskScoring += "$($Issue.Technique) +1"
         }
 
         if ($Issue.IdentityReferenceSID -match $UnsafeUsers) {
@@ -3411,8 +3430,8 @@ function Set-RiskRating {
             $RiskScoring += 'Group: +1'
         }
 
-        # Safe users and managed service accounts are inherently safer than other principals - except in ESC3 Condition 2!
-        if ($Issue.Technique -eq 'ESC3' -and $Issue.Condition -eq 2) {
+        # Safe users and managed service accounts are inherently safer than other principals - except in ESC3 Condition 2 and ESC9!
+        if (($Issue.Technique -eq 'ESC9') -or ($Issue.Technique -eq 'ESC3' -and $Issue.Condition -eq 2)) {
             if ($Issue.IdentityReferenceSID -match $SafeUsers) {
                 # Safe Users are admins. Authenticating as an admin is bad.
                 $RiskValue += 2
@@ -3616,8 +3635,8 @@ function Set-RiskRating {
             $RiskValue += $OtherTemplateRisk
         }
 
-        # Disabled ESC1, ESC2, ESC3, ESC4, and ESC15 templates are more dangerous if there's an ESC5 on one or more CA objects
-        if ($Issue.Technique -match 'ESC1|ESC2|ESC3|ESC4' -and $Issue.Enabled -eq $false ) {
+        # Disabled ESC1, ESC2, ESC3, ESC4, ESC9, and ESC15 templates are more dangerous if there's an ESC5 on one or more CA objects
+        if ($Issue.Technique -match 'ESC1|ESC2|ESC3|ESC4|ESC9' -and $Issue.Enabled -eq $false ) {
             $ESC5 = Find-ESC5 -ADCSObjects $ADCSObjects -SafeUsers $SafeUsers -UnsafeUsers $UnsafeUsers -DangerousRights $DangerousRights -SafeOwners '-519$' -SafeObjectTypes $SafeObjectTypes -SkipRisk |
                 Where-Object { $_.objectClass -eq 'pKIEnrollmentService' }
             $ESC5Names = @(($ESC5 | Select-Object -Property Name -Unique).Name)
@@ -3688,6 +3707,18 @@ function Set-RiskRating {
                 }
             }
         }
+    }
+
+    # ESC9/ESC16 are much more dangerous when ESC6 exists
+    if ($Issue.Technique -match 'ESC9|ESC16') {
+        $ESC6 = Find-ESC6 -ADCSObjects $ADCSObjects -UnsafeUsers $UnsafeUsers -SkipRisk
+        if ($ESC6) {
+            $RiskValue += 2
+            $RiskScoring += "One or more CAs have an ESC6: +2"
+            foreach ($ca in $ESC6.CAFullName) {
+                $RiskScoring += "  - ESC6 exists on $ca"
+            }
+        } # end if ($ESC6)
     }
 
     # Convert Value to Name
@@ -4282,6 +4313,118 @@ Set-Acl -Path `$Path -AclObject `$ACL
     } # end elseif ($Issue.Issue -match 'GenericAll')
 }
 
+function Update-ESC9Remediation {
+    <#
+    .SYNOPSIS
+        This function asks the user a set of questions to provide the most appropriate remediation for ESC9 issues.
+
+    .DESCRIPTION
+        This function takes a single ESC9 issue as input then asks a series of questions to determine the correct
+        remediation.
+
+        Questions:
+        1. Does the identified principal need to enroll in this template? [Yes/No/Unsure]
+        2. Is this certificate widely used and/or frequently requested? [Yes/No/Unsure]
+
+        Depending on answers to these questions, the Issue and Fix attributes on the Issue object are updated.
+
+        TODO: More questions:
+        Should the identified principal be able to request certs that include a SAN or SANs?
+
+    .PARAMETER Issue
+        A pscustomobject that includes all pertinent information about the ESC1 issue.
+
+    .OUTPUTS
+        This function updates ESC9 remediations customized to the user's needs.
+
+    .EXAMPLE
+        $Targets = Get-Target
+        $ADCSObjects = Get-ADCSObject -Targets $Targets
+        $SafeUsers = '-512$|-519$|-544$|-18$|-517$|-500$|-516$|-521$|-498$|-9$|-526$|-527$|S-1-5-10'
+        $ESC9Issues = Find-ESC9 -ADCSObjects $ADCSObjects -SafeUsers $SafeUsers
+        foreach ($issue in $ESC9Issues) { Update-ESC9Remediation -Issue $Issue }
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [object]$Issue
+    )
+
+    $Header = "`n[!] ESC9 Issue detected in $($Issue.Name)"
+    Write-Host $Header -ForegroundColor Yellow
+    Write-Host $('-' * $Header.Length) -ForegroundColor Yellow
+    Write-Host @"
+The $($Issue.Name) template has the szOID_NTDS_CA_SECURITY_EXT security extension
+disabled. Certificates issued from this template will not enforce strong
+certificate binding. Manager approval is not required for a certificate to be issued.
+To provide the most appropriate remediation for this issue, Locksmith will now
+ask you a few questions.
+"@
+
+    $Enroll = ''
+    do {
+        $Enroll = Read-Host "`nDoes $($Issue.IdentityReference) need to Enroll in the $($Issue.Name) template? [y/n/unsure]"
+    } while ( ($Enroll -ne 'y') -and ($Enroll -ne 'n') -and ($Enroll -ne 'unsure'))
+
+    if ($Enroll -eq 'y') {
+        $Frequent = ''
+        do {
+            $Frequent = Read-Host "`nIs the $($Issue.Name) certificate frequently requested? [y/n/unsure]"
+        } while ( ($Frequent -ne 'y') -and ($Frequent -ne 'n') -and ($Frequent -ne 'unsure'))
+
+        if ($Frequent -ne 'n') {
+            $Issue.Fix = @"
+# Locksmith cannot currently determine the best remediation course.
+# Remediation Options:
+# 1. If $($Issue.IdentityReference) is a group, remove its Enroll/AutoEnroll rights and grant those rights
+#   to a smaller group or a single user/service account.
+
+# 2. Enable Manager Approval
+`$Object = '$($_.DistinguishedName)'
+Get-ADObject `$Object | Set-ADObject -Replace @{'msPKI-Enrollment-Flag' = 2}
+
+# 3. Enable the szOID_NTDS_CA_SECURITY_EXT security extension.
+TODO
+"@
+
+            $Issue.Revert = @"
+# 1. Replace Enroll/AutoEnroll rights from the smaller group/single user/service account and grant those rights
+#   back to $($Issue.IdentityReference).
+
+# 2. Disable Manager Approval
+`$Object = '$($_.DistinguishedName)'
+Get-ADObject `$Object | Set-ADObject -Replace @{'msPKI-Enrollment-Flag' = 0}
+
+# 3. Disable the szOID_NTDS_CA_SECURITY_EXT security extension.
+TODO
+"@
+        }
+    }
+    elseif ($Enroll -eq 'n') {
+        $Issue.Fix = @"
+<#
+    1. Open the Certification Templates Console: certtmpl.msc
+    2. Double-click the $($Issue.Name) template to open its Properties page.
+    3. Select the Security tab.
+    4. Select the entry for $($Issue.IdentityReference).
+    5. Uncheck the "Enroll" and/or "Autoenroll" boxes.
+    6. Click OK.
+#>
+"@
+
+        $Issue.Revert = @"
+<#
+    1. Open the Certification Templates Console: certtmpl.msc
+    2. Double-click the $($Issue.Name) template to open its Properties page.
+    3. Select the Security tab.
+    4. Select the entry for $($Issue.IdentityReference).
+    5. Check the "Enroll" and/or "Autoenroll" boxes depending on your specific needs.
+    6. Click OK.
+#>
+"@
+    } # end if ($Enroll -eq 'y')/elseif ($Enroll -eq 'n')
+}
+
 <#
   Prerequisites: PowerShell version 2 or above.
   License: MIT
@@ -4645,6 +4788,7 @@ function Invoke-Locksmith {
             'ESC6',
             'ESC7',
             'ESC8',
+            'ESC9',
             'ESC11',
             'ESC13',
             'ESC15',
@@ -4665,7 +4809,7 @@ function Invoke-Locksmith {
         [System.Management.Automation.PSCredential]$Credential
     )
 
-    $Version = '2025.5.18'
+    $Version = '2025.5.24'
     $LogoPart1 = @'
     _       _____  _______ _     _ _______ _______ _____ _______ _     _
     |      |     | |       |____/  |______ |  |  |   |      |    |_____|
@@ -4838,6 +4982,7 @@ function Invoke-Locksmith {
     $ESC6 = $Results['ESC6']
     $ESC7 = $Results['ESC7']
     $ESC8 = $Results['ESC8']
+    $ESC9 = $Results['ESC9']
     $ESC11 = $Results['ESC11']
     $ESC13 = $Results['ESC13']
     $ESC15 = $Results['ESC15']
@@ -4862,6 +5007,7 @@ function Invoke-Locksmith {
             Format-Result -Issue $ESC6 -Mode 0
             Format-Result -Issue $ESC7 -Mode 0
             Format-Result -Issue $ESC8 -Mode 0
+            Format-Result -Issue $ESC9 -Mode 0
             Format-Result -Issue $ESC11 -Mode 0
             Format-Result -Issue $ESC13 -Mode 0
             Format-Result -Issue $ESC15 -Mode 0
@@ -4893,6 +5039,7 @@ Invoke-Locksmith -Mode 1
             Format-Result -Issue $ESC6 -Mode 1
             Format-Result -Issue $ESC7 -Mode 1
             Format-Result -Issue $ESC8 -Mode 1
+            Format-Result -Issue $ESC9 -Mode 1
             Format-Result -Issue $ESC11 -Mode 1
             Format-Result -Issue $ESC13 -Mode 1
             Format-Result -Issue $ESC15 -Mode 1
