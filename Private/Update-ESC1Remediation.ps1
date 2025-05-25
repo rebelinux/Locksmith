@@ -44,13 +44,13 @@ function Update-ESC1Remediation {
 
     $Enroll = ''
     do {
-        $Enroll = Read-Host "`nDoes $($Issue.IdentityReference) need to Enroll in the $($Issue.Name) template? [y/n/unsure]"
+        $Enroll = Read-Host "`n[?] Does $($Issue.IdentityReference) need to Enroll in the $($Issue.Name) template? [y/n/unsure]"
     } while ( ($Enroll -ne 'y') -and ($Enroll -ne 'n') -and ($Enroll -ne 'unsure'))
 
     if ($Enroll -eq 'y') {
         $Frequent = ''
         do {
-            $Frequent = Read-Host "`nIs the $($Issue.Name) certificate frequently requested? [y/n/unsure]"
+            $Frequent = Read-Host "`n[?] Is the $($Issue.Name) certificate frequently requested? [y/n/unsure]"
         } while ( ($Frequent -ne 'y') -and ($Frequent -ne 'n') -and ($Frequent -ne 'unsure'))
 
         if ($Frequent -ne 'n') {

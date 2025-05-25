@@ -34,74 +34,80 @@
         [switch]$SkipRisk
     )
     process {
-        $ADCSObjects | Where-Object {
-            ($_.objectClass -eq 'pKIEnrollmentService') -and $_.CAHostDistinguishedName -and
-            ( ($_.CAAdministrator) -or ($_.CertificateManager) )
+        Write-Output $ADCSObjects -PipelineVariable object | Where-Object {
+            ($object.objectClass -eq 'pKIEnrollmentService') -and $object.CAHostDistinguishedName -and
+            ( ($object.CAAdministrator) -or ($object.CertificateManager) )
         } | ForEach-Object {
-            $UnsafeCAAdministrators = Write-Output $_.CAAdministrator -PipelineVariable admin | ForEach-Object {
+            Write-Output $object.CAAdministrator -PipelineVariable admin | ForEach-Object {
                 $SID = Convert-IdentityReferenceToSid -Object $admin
                 if ($SID -notmatch $SafeUsers) {
-                    $admin
-                }
-            }
-            $UnsafeCertificateManagers = Write-Output $_.CertificateManager -PipelineVariable manager | ForEach-Object {
-                $SID = Convert-IdentityReferenceToSid -Object $manager
-                if ($SID -notmatch $SafeUsers) {
-                    $manager
-                }
-            }
-            if ($UnsafeCAAdministrators -or $UnsafeCertificateManagers) {
-                $Issue = [pscustomobject]@{
-                    Forest             = $_.CanonicalName.split('/')[0]
-                    Name               = $_.Name
-                    DistinguishedName  = $_.DistinguishedName
-                    CAAdministrator    = $_.CAAdministrator
-                    CertificateManager = $_.CertificateManager
-                    Issue              = $null
-                    Fix                = $null
-                    Revert             = $null
-                    Technique          = 'ESC7'
-                }
-                if ($UnsafeCAAdministrators) {
-                    $Issue.Issue = $Issue.Issue + @"
-Unexpected principals are granted "CA Administrator" rights on this Certification Authority.
-Unsafe CA Administrators: $($UnsafeCAAdministrators -join ', ').
+                    $Issue = [pscustomobject]@{
+                        Forest               = $object.CanonicalName.split('/')[0]
+                        Name                 = $object.Name
+                        DistinguishedName    = $object.DistinguishedName
+                        IdentityReference    = $admin
+                        IdentityReferenceSID = $SID
+                        Right                = 'CA Administrator'
+                        Issue                = @"
+$admin has been granted CA Administrator rights on this Certification Authority (CA).
 
-"@
-                    $Issue.Fix = $Issue.Fix + @"
-Revoke CA Administrator rights from $($UnsafeCAAdministrators -join ', ')
-
-"@
-                    $Issue.Revert = $Issue.Revert + @"
-Reinstate CA Administrator rights for $($UnsafeCAAdministrators -join ', ')
-
-"@
-                }
-                if ($UnsafeCertificateManagers) {
-                    $Issue.Issue = $Issue.Issue + @"
-expected principals are granted "Certificate Manager" rights on this Certification Authority.
-Unexpected Principals: $($UnsafeCertificateManagers -join ', ')
-
-"@
-                    $Issue.Fix = $Issue.Fix + @"
-Revoke Certificate Manager rights from $($UnsafeCertificateManagers -join ', ')
-
-"@
-                    $Issue.Revert = $Issue.Revert + @"
-Reinstate Certificate Manager rights for $($UnsafeCertificateManagers -join ', ')
-
-"@
-                }
-                if ($SkipRisk -eq $false) {
-                    Set-RiskRating -ADCSObjects $ADCSObjects -Issue $Issue -SafeUsers $SafeUsers -UnsafeUsers $UnsafeUsers
-                }
-                $Issue.Issue = $Issue.Issue + @"
+$admin has full control over this CA.
 
 More info:
   - https://posts.specterops.io/certified-pre-owned-d95910965cd2
 
 "@
-                $Issue
+                        Fix                  = "Revoke CA Administrator rights from ${admin}."
+                        Revert               = "Restore CA Administrator rights to ${admin}."
+                        Technique            = 'ESC7'
+                    }
+
+                    if ($SkipRisk -eq $false) {
+                        Set-RiskRating -ADCSObjects $ADCSObjects -Issue $Issue -SafeUsers $SafeUsers -UnsafeUsers $UnsafeUsers
+                    }
+
+                    if ( $Mode -in @(1, 3, 4) ) {
+                        Update-ESC7Remediation -Issue $Issue
+                    }
+
+                    $Issue
+                }
+            }
+
+            Write-Output $object.CertificateManager -PipelineVariable admin | ForEach-Object {
+                $SID = Convert-IdentityReferenceToSid -Object $admin
+                if ($SID -notmatch $SafeUsers) {
+                    $Issue = [pscustomobject]@{
+                        Forest               = $object.CanonicalName.split('/')[0]
+                        Name                 = $object.Name
+                        DistinguishedName    = $object.DistinguishedName
+                        IdentityReference    = $admin
+                        IdentityReferenceSID = $SID
+                        Right                = 'Certificate Manager'
+                        Issue                = @"
+$admin has been granted Certificate Manager rights on this Certification Authority (CA).
+
+$admin can approve pending certificate requests on this CA.
+
+More info:
+  - https://posts.specterops.io/certified-pre-owned-d95910965cd2
+
+"@
+                        Fix                  = "Revoke Certificate Manager rights from ${admin}."
+                        Revert               = "Restore Certificate Manager rights to ${admin}."
+                        Technique            = 'ESC7'
+                    }
+
+                    if ($SkipRisk -eq $false) {
+                        Set-RiskRating -ADCSObjects $ADCSObjects -Issue $Issue -SafeUsers $SafeUsers -UnsafeUsers $UnsafeUsers
+                    }
+
+                    if ( $Mode -in @(1, 3, 4) ) {
+                        Update-ESC7Remediation -Issue $Issue
+                    }
+
+                    $Issue
+                }
             }
         }
     }

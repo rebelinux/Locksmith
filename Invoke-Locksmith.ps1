@@ -299,12 +299,14 @@ Get-ADObject `$Object | Set-ADObject -Replace @{'msPKI-Enrollment-Flag' = 0}
                     Technique             = 'ESC1'
                 }
 
-                if ( $Mode -in @(1, 3, 4) ) {
-                    Update-ESC1Remediation -Issue $Issue
-                }
                 if ($SkipRisk -eq $false) {
                     Set-RiskRating -ADCSObjects $ADCSObjects -Issue $Issue -SafeUsers $SafeUsers -UnsafeUsers $UnsafeUsers
                 }
+
+                if ( $Mode -in @(1, 3, 4) ) {
+                    Update-ESC1Remediation -Issue $Issue
+                }
+
                 $Issue
             }
         }
@@ -1144,12 +1146,14 @@ Set-Acl -Path 'AD:$($_.DistinguishedName)' -AclObject `$ACL
                     Technique             = 'ESC4'
                 }
 
-                if ( $Mode -in @(1, 3, 4) ) {
-                    Update-ESC4Remediation -Issue $Issue
-                }
                 if ($SkipRisk -eq $false) {
                     Set-RiskRating -ADCSObjects $ADCSObjects -Issue $Issue -SafeUsers $SafeUsers -UnsafeUsers $UnsafeUsers
                 }
+
+                if ( $Mode -in @(1, 3, 4) ) {
+                    Update-ESC4Remediation -Issue $Issue
+                }
+
                 $Issue
             }
         }
@@ -1569,74 +1573,80 @@ function Find-ESC7 {
         [switch]$SkipRisk
     )
     process {
-        $ADCSObjects | Where-Object {
-            ($_.objectClass -eq 'pKIEnrollmentService') -and $_.CAHostDistinguishedName -and
-            ( ($_.CAAdministrator) -or ($_.CertificateManager) )
+        Write-Output $ADCSObjects -PipelineVariable object | Where-Object {
+            ($object.objectClass -eq 'pKIEnrollmentService') -and $object.CAHostDistinguishedName -and
+            ( ($object.CAAdministrator) -or ($object.CertificateManager) )
         } | ForEach-Object {
-            $UnsafeCAAdministrators = Write-Output $_.CAAdministrator -PipelineVariable admin | ForEach-Object {
+            Write-Output $object.CAAdministrator -PipelineVariable admin | ForEach-Object {
                 $SID = Convert-IdentityReferenceToSid -Object $admin
                 if ($SID -notmatch $SafeUsers) {
-                    $admin
-                }
-            }
-            $UnsafeCertificateManagers = Write-Output $_.CertificateManager -PipelineVariable manager | ForEach-Object {
-                $SID = Convert-IdentityReferenceToSid -Object $manager
-                if ($SID -notmatch $SafeUsers) {
-                    $manager
-                }
-            }
-            if ($UnsafeCAAdministrators -or $UnsafeCertificateManagers) {
-                $Issue = [pscustomobject]@{
-                    Forest             = $_.CanonicalName.split('/')[0]
-                    Name               = $_.Name
-                    DistinguishedName  = $_.DistinguishedName
-                    CAAdministrator    = $_.CAAdministrator
-                    CertificateManager = $_.CertificateManager
-                    Issue              = $null
-                    Fix                = $null
-                    Revert             = $null
-                    Technique          = 'ESC7'
-                }
-                if ($UnsafeCAAdministrators) {
-                    $Issue.Issue = $Issue.Issue + @"
-Unexpected principals are granted "CA Administrator" rights on this Certification Authority.
-Unsafe CA Administrators: $($UnsafeCAAdministrators -join ', ').
+                    $Issue = [pscustomobject]@{
+                        Forest               = $object.CanonicalName.split('/')[0]
+                        Name                 = $object.Name
+                        DistinguishedName    = $object.DistinguishedName
+                        IdentityReference    = $admin
+                        IdentityReferenceSID = $SID
+                        Right                = 'CA Administrator'
+                        Issue                = @"
+$admin has been granted CA Administrator rights on this Certification Authority (CA).
 
-"@
-                    $Issue.Fix = $Issue.Fix + @"
-Revoke CA Administrator rights from $($UnsafeCAAdministrators -join ', ')
-
-"@
-                    $Issue.Revert = $Issue.Revert + @"
-Reinstate CA Administrator rights for $($UnsafeCAAdministrators -join ', ')
-
-"@
-                }
-                if ($UnsafeCertificateManagers) {
-                    $Issue.Issue = $Issue.Issue + @"
-expected principals are granted "Certificate Manager" rights on this Certification Authority.
-Unexpected Principals: $($UnsafeCertificateManagers -join ', ')
-
-"@
-                    $Issue.Fix = $Issue.Fix + @"
-Revoke Certificate Manager rights from $($UnsafeCertificateManagers -join ', ')
-
-"@
-                    $Issue.Revert = $Issue.Revert + @"
-Reinstate Certificate Manager rights for $($UnsafeCertificateManagers -join ', ')
-
-"@
-                }
-                if ($SkipRisk -eq $false) {
-                    Set-RiskRating -ADCSObjects $ADCSObjects -Issue $Issue -SafeUsers $SafeUsers -UnsafeUsers $UnsafeUsers
-                }
-                $Issue.Issue = $Issue.Issue + @"
+$admin has full control over this CA.
 
 More info:
   - https://posts.specterops.io/certified-pre-owned-d95910965cd2
 
 "@
-                $Issue
+                        Fix                  = "Revoke CA Administrator rights from ${admin}."
+                        Revert               = "Restore CA Administrator rights to ${admin}."
+                        Technique            = 'ESC7'
+                    }
+
+                    if ($SkipRisk -eq $false) {
+                        Set-RiskRating -ADCSObjects $ADCSObjects -Issue $Issue -SafeUsers $SafeUsers -UnsafeUsers $UnsafeUsers
+                    }
+
+                    if ( $Mode -in @(1, 3, 4) ) {
+                        Update-ESC7Remediation -Issue $Issue
+                    }
+
+                    $Issue
+                }
+            }
+
+            Write-Output $object.CertificateManager -PipelineVariable admin | ForEach-Object {
+                $SID = Convert-IdentityReferenceToSid -Object $admin
+                if ($SID -notmatch $SafeUsers) {
+                    $Issue = [pscustomobject]@{
+                        Forest               = $object.CanonicalName.split('/')[0]
+                        Name                 = $object.Name
+                        DistinguishedName    = $object.DistinguishedName
+                        IdentityReference    = $admin
+                        IdentityReferenceSID = $SID
+                        Right                = 'Certificate Manager'
+                        Issue                = @"
+$admin has been granted Certificate Manager rights on this Certification Authority (CA).
+
+$admin can approve pending certificate requests on this CA.
+
+More info:
+  - https://posts.specterops.io/certified-pre-owned-d95910965cd2
+
+"@
+                        Fix                  = "Revoke Certificate Manager rights from ${admin}."
+                        Revert               = "Restore Certificate Manager rights to ${admin}."
+                        Technique            = 'ESC7'
+                    }
+
+                    if ($SkipRisk -eq $false) {
+                        Set-RiskRating -ADCSObjects $ADCSObjects -Issue $Issue -SafeUsers $SafeUsers -UnsafeUsers $UnsafeUsers
+                    }
+
+                    if ( $Mode -in @(1, 3, 4) ) {
+                        Update-ESC7Remediation -Issue $Issue
+                    }
+
+                    $Issue
+                }
             }
         }
     }
@@ -3375,6 +3385,29 @@ function Set-RiskRating {
             $RiskScoring += 'HTTP Enrollment: +2'
         }
 
+        if ($Issue.Technique -eq 'ESC7') {
+            # If an Issue can be tied to a principal, the principal's objectClass impacts the Issue's risk
+            $SID = $Issue.IdentityReferenceSID.ToString()
+            $IdentityReferenceObjectClass = Get-ADObject -Filter { objectSid -eq $SID } | Select-Object objectClass
+
+            if ($Issue.IdentityReferenceSID -match $UnsafeUsers) {
+                # Authenticated Users, Domain Users, Domain Computers etc. are very risky
+                $RiskValue += 2
+                $RiskScoring += 'Very Large Group: +2'
+            }
+            elseif ($IdentityReferenceObjectClass -eq 'group') {
+                # Groups are riskier than individual principals
+                $RiskValue += 1
+                $RiskScoring += 'Group: +1'
+            }
+            elseif ($Issue.IdentityReferenceSID -notmatch $UnsafeUsers -and
+                $Issue.IdentityReferenceSID -notmatch $SafeUsers -and
+                $IdentityReferenceObjectClass -notlike '*ManagedServiceAccount') {
+                $RiskValue += 1
+                $RiskScoring += 'Unprivileged Principal: +1'
+            }
+        }
+
         # Modifiers that rely on the existence of other ESCs
         if ($Issue.Technique -eq 'ESC6') {
             [array]$ESC9 = Find-ESC9 -ADCSObjects $ADCSObjects -SafeUsers $SafeUsers -ClientAuthEKUs $ClientAuthEkus -UnsafeUsers $UnsafeUsers
@@ -3409,15 +3442,16 @@ function Set-RiskRating {
             }
         }
 
-        # The principal's objectClass impacts the Issue's risk
-        $SID = $Issue.IdentityReferenceSID.ToString()
-        $IdentityReferenceObjectClass = Get-ADObject -Filter { objectSid -eq $SID } | Select-Object objectClass
-
         # ESC1 and ESC4 templates are more dangerous than other templates because they can result in immediate compromise.
         if ($Issue.Technique -in @('ESC1', 'ESC4')) {
             $RiskValue += 1
             $RiskScoring += "$($Issue.Technique) +1"
         }
+
+        # If an Issue can be tied to a principal, the principal's objectClass impacts the Issue's risk
+        $SID = $Issue.IdentityReferenceSID.ToString()
+        $IdentityReferenceObjectClass = Get-ADObject -Filter { objectSid -eq $SID } | Select-Object objectClass
+
 
         if ($Issue.IdentityReferenceSID -match $UnsafeUsers) {
             # Authenticated Users, Domain Users, Domain Computers etc. are very risky
@@ -3428,6 +3462,12 @@ function Set-RiskRating {
             # Groups are riskier than individual principals
             $RiskValue += 1
             $RiskScoring += 'Group: +1'
+        }
+        elseif ($Issue.IdentityReferenceSID -notmatch $UnsafeUsers -and
+            $Issue.IdentityReferenceSID -notmatch $SafeUsers -and
+            $IdentityReferenceObjectClass -notlike '*ManagedServiceAccount') {
+            $RiskValue += 1
+            $RiskScoring += 'Unprivileged Principal: +1'
         }
 
         # Safe users and managed service accounts are inherently safer than other principals - except in ESC3 Condition 2 and ESC9!
@@ -4090,13 +4130,13 @@ function Update-ESC1Remediation {
 
     $Enroll = ''
     do {
-        $Enroll = Read-Host "`nDoes $($Issue.IdentityReference) need to Enroll in the $($Issue.Name) template? [y/n/unsure]"
+        $Enroll = Read-Host "`n[?] Does $($Issue.IdentityReference) need to Enroll in the $($Issue.Name) template? [y/n/unsure]"
     } while ( ($Enroll -ne 'y') -and ($Enroll -ne 'n') -and ($Enroll -ne 'unsure'))
 
     if ($Enroll -eq 'y') {
         $Frequent = ''
         do {
-            $Frequent = Read-Host "`nIs the $($Issue.Name) certificate frequently requested? [y/n/unsure]"
+            $Frequent = Read-Host "`n[?] Is the $($Issue.Name) certificate frequently requested? [y/n/unsure]"
         } while ( ($Frequent -ne 'y') -and ($Frequent -ne 'n') -and ($Frequent -ne 'unsure'))
 
         if ($Frequent -ne 'n') {
@@ -4162,8 +4202,10 @@ function Update-ESC4Remediation {
     .DESCRIPTION
         This function takes a single ESC4 issue as input. It then prompts the user if the principal with the ESC4 rights
         administers the template in question.
-        If the principal is an admin of the template, the Issue attribute is updated to indicate this configuration is
-        expected, and the Fix attribute for the issue is updated to indicate no remediation is needed.
+        If the principal is an admin of the template:
+          - the Issue attribute is updated to indicate this configuration is expected
+          - the Fix attribute for the issue is updated to indicate no remediation is needed
+          - the Risk Value, Risk Name, and Risk Scoring Details are updated to indicate no risk
         If the the principal is not an admin of the template AND the rights assigned is GenericAll, Locksmith will ask
         if Enroll or AutoEnroll rights are needed.
         Depending on the answers to the listed questions, the Fix attribute is updated accordingly.
@@ -4198,12 +4240,20 @@ function Update-ESC4Remediation {
 
     $Admin = ''
     do {
-        $Admin = Read-Host "`nDoes $($Issue.IdentityReference) administer and/or maintain the $($Issue.Name) template? [y/n]"
+        $Admin = Read-Host "`n[?] Does $($Issue.IdentityReference) administer and/or maintain the $($Issue.Name) template? [y/n]"
     } while ( ($Admin -ne 'y') -and ($Admin -ne 'n') )
 
     if ($Admin -eq 'y') {
-        $Issue.Issue = "$($Issue.IdentityReference) has $($Issue.ActiveDirectoryRights) rights on this template, but this is expected."
+        $Issue.Issue = @"
+$($Issue.IdentityReference) has $($Issue.ActiveDirectoryRights) rights on this template, but this is expected.
+
+More info:
+  - https://posts.specterops.io/certified-pre-owned-d95910965cd2
+"@
         $Issue.Fix = "No immediate remediation required."
+        $Issue | Add-Member -NotePropertyName RiskValue -NotePropertyValue 0 -Force
+        $Issue | Add-Member -NotePropertyName RiskName -NotePropertyValue 'Informational' -Force
+        $Issue | Add-Member -NotePropertyName RiskScoring -NotePropertyValue "$($Issue.IdentityReference) administers this template" -Force
     }
     elseif ($Issue.Issue -match 'GenericAll') {
         $RightsToRestore = 0
@@ -4313,6 +4363,102 @@ Set-Acl -Path `$Path -AclObject `$ACL
     } # end elseif ($Issue.Issue -match 'GenericAll')
 }
 
+function Update-ESC7Remediation {
+    <#
+    .SYNOPSIS
+        This function asks the user a set of questions to provide the most appropriate remediation for ESC7 issues.
+
+    .DESCRIPTION
+        This function takes a single ESC7 issue as input. It then prompts the user if the principal with the ESC7 rights
+        administers the Certification Authority (CA) in question.
+        If the principal is an admin of the CA:
+          - the Issue attribute is updated to indicate this configuration is expected
+          - the Fix attribute for the issue is updated to indicate no remediation is needed
+          - the Risk Value and Risk Scoring are set to
+        If the the principal is not an admin of the CA,
+        Depending on the answers to the listed questions, the Fix attribute is updated accordingly.
+
+    .PARAMETER Issue
+        A pscustomobject that includes all pertinent information about the ESC7 issue.
+
+    .OUTPUTS
+        This function updates ESC7 remediations customized to the user's needs.
+
+    .EXAMPLE
+        $Targets = Get-Target
+        $ADCSObjects = Get-ADCSObject -Targets $Targets
+        $DangerousRights = @('GenericAll', 'WriteProperty', 'WriteOwner', 'WriteDacl')
+        $SafeOwners = '-512$|-519$|-544$|-18$|-517$|-500$'
+        $SafeUsers = '-512$|-519$|-544$|-18$|-517$|-500$|-516$|-521$|-498$|-9$|-526$|-527$|S-1-5-10'
+        $SafeObjectTypes = '0e10c968-78fb-11d2-90d4-00c04f79dc55|a05b8cc2-17bc-4802-a710-e7c15ab866a2'
+        $ESC7Issues = Find-ESC7 -ADCSObjects $ADCSObjects -DangerousRights $DangerousRights -SafeOwners $SafeOwners -SafeUsers $SafeUsers -SafeObjectTypes $SafeObjectTypes -Mode 1
+        foreach ($issue in $ESC7Issues) { Update-ESC7Remediation -Issue $Issue }
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [object]$Issue
+    )
+
+    if ($Issue.Right -eq 'CA Administrator') {
+        $Header = "`n[!] ESC7 Issue detected on $($Issue.Name)"
+        Write-Host $Header -ForegroundColor Yellow
+        Write-Host $('-' * $Header.Length) -ForegroundColor Yellow
+        Write-Host "$($Issue.IdentityReference) has CA Administrator rights on this Certification Authority (CA).`n"
+        Write-Host 'To provide the most appropriate remediation for this issue, Locksmith will now ask you a few questions.'
+
+        $Admin = ''
+        do {
+            $Admin = Read-Host "`n[?] Does $($Issue.IdentityReference) administer and/or maintain the $($Issue.Name) CA? [y/n]"
+        } while ( ($Admin -ne 'y') -and ($Admin -ne 'n') )
+
+        if ($Admin -eq 'y') {
+            $Issue.Issue = @"
+$($Issue.IdentityReference) has CA Administrator rights on this CA, but this is expected.
+
+Note:
+These rights grant $($Issue.IdentityReference) control of the forest.
+This principal should be considered a Tier 0/control plane object and protected as such.
+
+More info:
+  - https://posts.specterops.io/certified-pre-owned-d95910965cd2
+
+"@
+            $Issue.Fix = "No immediate remediation required."
+            $Issue | Add-Member -NotePropertyName RiskValue -NotePropertyValue 0 -Force
+            $Issue | Add-Member -NotePropertyName RiskName -NotePropertyValue 'Informational' -Force
+            $Issue | Add-Member -NotePropertyName RiskScoring -NotePropertyValue "$($Issue.IdentityReference) administers this CA" -Force
+        }
+    }
+
+    if ($Issue.Right -eq 'Certificate Manager') {
+        $Header = "`n[!] ESC7 Issue detected on $($Issue.Name)"
+        Write-Host $Header -ForegroundColor Yellow
+        Write-Host $('-' * $Header.Length) -ForegroundColor Yellow
+        Write-Host "$($Issue.IdentityReference) has Certificate Manager rights on this Certification Authority (CA).`n"
+        Write-Host 'To provide the most appropriate remediation for this issue, Locksmith will now ask you a few questions.'
+
+        $Admin = ''
+        do {
+            $Admin = Read-Host "`n[?] Does $($Issue.IdentityReference) need to approve pending certificate requests on the $($Issue.Name) CA? [y/n]"
+        } while ( ($Admin -ne 'y') -and ($Admin -ne 'n') )
+
+        if ($Admin -eq 'y') {
+            $Issue.Issue = @"
+$($Issue.IdentityReference) has Certificate Manager rights on this CA, but this is expected.
+
+More info:
+  - https://posts.specterops.io/certified-pre-owned-d95910965cd2
+
+"@
+            $Issue.Fix = "No immediate remediation required."
+            $Issue | Add-Member -NotePropertyName RiskValue -NotePropertyValue 0 -Force
+            $Issue | Add-Member -NotePropertyName RiskName -NotePropertyValue 'Informational' -Force
+            $Issue | Add-Member -NotePropertyName RiskScoring -NotePropertyValue "$($Issue.IdentityReference) approves pending certificate requests on this CA" -Force
+        }
+    }
+}
+
 function Update-ESC9Remediation {
     <#
     .SYNOPSIS
@@ -4363,13 +4509,13 @@ ask you a few questions.
 
     $Enroll = ''
     do {
-        $Enroll = Read-Host "`nDoes $($Issue.IdentityReference) need to Enroll in the $($Issue.Name) template? [y/n/unsure]"
+        $Enroll = Read-Host "`n[?] Does $($Issue.IdentityReference) need to Enroll in the $($Issue.Name) template? [y/n/unsure]"
     } while ( ($Enroll -ne 'y') -and ($Enroll -ne 'n') -and ($Enroll -ne 'unsure'))
 
     if ($Enroll -eq 'y') {
         $Frequent = ''
         do {
-            $Frequent = Read-Host "`nIs the $($Issue.Name) certificate frequently requested? [y/n/unsure]"
+            $Frequent = Read-Host "`n[?] Is the $($Issue.Name) certificate frequently requested? [y/n/unsure]"
         } while ( ($Frequent -ne 'y') -and ($Frequent -ne 'n') -and ($Frequent -ne 'unsure'))
 
         if ($Frequent -ne 'n') {
@@ -4809,7 +4955,7 @@ function Invoke-Locksmith {
         [System.Management.Automation.PSCredential]$Credential
     )
 
-    $Version = '2025.5.24'
+    $Version = '2025.5.25'
     $LogoPart1 = @'
     _       _____  _______ _     _ _______ _______ _____ _______ _     _
     |      |     | |       |____/  |______ |  |  |   |      |    |_____|
