@@ -40,11 +40,11 @@
     process {
         if ($Credential) {
             $ADCSObjects | Where-Object objectClass -Match 'pKIEnrollmentService' | ForEach-Object {
-                Get-ADObject $_.CAHostDistinguishedName -Properties * -Server $ForestGC -Credential $Credential
+                if ($_.CAHostDistinguishedName) { Get-ADObject $_.CAHostDistinguishedName -Properties * -Server $ForestGC -Credential $Credential } else { Write-Warning "Get-CAHostObject: Unable to get information from $($_.DisplayName)" }
             }
         } else {
             $ADCSObjects | Where-Object objectClass -Match 'pKIEnrollmentService' | ForEach-Object {
-                Get-ADObject $_.CAHostDistinguishedName -Properties * -Server $ForestGC
+                if ($_.CAHostDistinguishedName) { Get-ADObject -Identity $_.CAHostDistinguishedName -Properties * -Server $ForestGC } else { Write-Warning "Get-CAHostObject: Unable to get information from $($_.DisplayName)" }
             }
         }
     }

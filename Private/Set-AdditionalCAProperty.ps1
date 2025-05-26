@@ -25,6 +25,8 @@
         Date: July 15, 2022
     #>
 
+    # TODO REfactor to move the creation of each property into its own function
+
     [CmdletBinding(SupportsShouldProcess)]
     param (
         [parameter(
@@ -156,10 +158,32 @@
                 } catch {
                     $InterfaceFlag = 'Failure'
                 }
+                try {
+                    if ($Credential) {
+                        $CertutilSecurity = Invoke-Command -ComputerName $CAHostFQDN -Credential $Credential -ScriptBlock { certutil -config $using:CAFullName -getreg CA\Security }
+                    } else {
+                        $CertutilSecurity = certutil -config $CAFullName -getreg CA\Security
+                    }
+                } catch {
+                    $CAAdministrator = 'Failure'
+                    $CertificateManager = 'Failure'
+                }
+                try {
+                    if ($Credential) {
+                        $CertutilDisableExtensionList = Invoke-Command -ComputerName $CAHostFQDN -Credential $Credential -ScriptBlock { certutil -config $using:CAFullName -getreg policy\DisableExtensionList }
+                    } else {
+                        $CertutilDisableExtensionList = certutil -config $CAFullName -getreg policy\DisableExtensionList
+                    }
+                } catch {
+                    $CertutilDisableExtensionList = 'Failure'
+                }
             } else {
                 $AuditFilter = 'CA Unavailable'
                 $SANFlag = 'CA Unavailable'
                 $InterfaceFlag = 'CA Unavailable'
+                $CAAdministrator = 'CA Unavailable'
+                $CertificateManager = 'CA Unavailable'
+                $DisableExtensionList = 'CA Unavailable'
             }
             if ($CertutilAudit) {
                 try {
@@ -190,6 +214,26 @@
                     $InterfaceFlag = 'No'
                 }
             }
+            if ($CertutilSecurity) {
+                [string[]]$CAAdministrator = $CertutilSecurity | ForEach-Object {
+                    if ($_ -match '^.*Allow.*CA Administrator.*.*\t(.*)$') {
+                        $matches[1].ToString()
+                    }
+                }
+                [string[]]$CertificateManager = $CertutilSecurity | ForEach-Object {
+                    if ($_ -match '^.*Allow.*Certificate Manager.*\t(.*)$') {
+                        $matches[1].ToString()
+                    }
+                }
+            }
+            if ($CertutilDisableExtensionList) {
+                [string]$DisableExtensionList = $CertutilDisableExtensionList | Select-String '1\.3\.6\.1\.4\.1\.311\.25\.2'
+                if ($DisableExtensionList) {
+                    $DisableExtensionList = 'Yes'
+                } else {
+                    $DisableExtensionList = 'No'
+                }
+            }
             Add-Member -InputObject $_ -MemberType NoteProperty -Name AuditFilter -Value $AuditFilter -Force
             Add-Member -InputObject $_ -MemberType NoteProperty -Name CAEnrollmentEndpoint -Value $CAEnrollmentEndpoint -Force
             Add-Member -InputObject $_ -MemberType NoteProperty -Name CAFullName -Value $CAFullName -Force
@@ -197,6 +241,9 @@
             Add-Member -InputObject $_ -MemberType NoteProperty -Name CAHostDistinguishedName -Value $CAHostDistinguishedName -Force
             Add-Member -InputObject $_ -MemberType NoteProperty -Name SANFlag -Value $SANFlag -Force
             Add-Member -InputObject $_ -MemberType NoteProperty -Name InterfaceFlag -Value $InterfaceFlag -Force
+            Add-Member -InputObject $_ -MemberType NoteProperty -Name CAAdministrator -Value $CAAdministrator -Force
+            Add-Member -InputObject $_ -MemberType NoteProperty -Name CertificateManager -Value $CertificateManager -Force
+            Add-Member -InputObject $_ -MemberType NoteProperty -Name DisableExtensionList -Value $DisableExtensionList -Force
         }
     }
 }
