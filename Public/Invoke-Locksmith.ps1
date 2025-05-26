@@ -95,6 +95,7 @@ function Invoke-Locksmith {
             'ESC6',
             'ESC7',
             'ESC8',
+            'ESC9',
             'ESC11',
             'ESC13',
             'ESC15',
@@ -285,6 +286,7 @@ function Invoke-Locksmith {
     $ESC6 = $Results['ESC6']
     $ESC7 = $Results['ESC7']
     $ESC8 = $Results['ESC8']
+    $ESC9 = $Results['ESC9']
     $ESC11 = $Results['ESC11']
     $ESC13 = $Results['ESC13']
     $ESC15 = $Results['ESC15']
@@ -309,6 +311,7 @@ function Invoke-Locksmith {
             Format-Result -Issue $ESC6 -Mode 0
             Format-Result -Issue $ESC7 -Mode 0
             Format-Result -Issue $ESC8 -Mode 0
+            Format-Result -Issue $ESC9 -Mode 0
             Format-Result -Issue $ESC11 -Mode 0
             Format-Result -Issue $ESC13 -Mode 0
             Format-Result -Issue $ESC15 -Mode 0
@@ -340,6 +343,7 @@ Invoke-Locksmith -Mode 1
             Format-Result -Issue $ESC6 -Mode 1
             Format-Result -Issue $ESC7 -Mode 1
             Format-Result -Issue $ESC8 -Mode 1
+            Format-Result -Issue $ESC9 -Mode 1
             Format-Result -Issue $ESC11 -Mode 1
             Format-Result -Issue $ESC13 -Mode 1
             Format-Result -Issue $ESC15 -Mode 1
