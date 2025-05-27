@@ -1,6 +1,6 @@
 # Source: https://learn.microsoft.com/en-us/archive/blogs/janesays/compare-all-properties-of-two-objects-in-windows-powershell
 param(
-    [Parameter(Mandatory = $true)]
+    [Parameter(Mandatory)]
     [string]$DN
 )
 

@@ -30,7 +30,7 @@
     [CmdletBinding(SupportsShouldProcess)]
     param (
         [parameter(
-            Mandatory = $true,
+            Mandatory,
             ValueFromPipeline = $true)]
         [Microsoft.ActiveDirectory.Management.ADEntity[]]$ADCSObjects,
         [PSCredential]$Credential,
