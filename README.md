@@ -28,11 +28,11 @@ A small tool built to find and fix common misconfigurations in Active Directory 
 
 1. [Installation](#Installation)
 2. [Run Locksmith](#Run Locksmith)
-   1. [Mode 0](#Mode 0)
-   2. [Mode 1](#Mode 1)
-   3. [Mode 2](#Mode 2)
-   4. [Mode 3](#Mode 3)
-   5. [Mode 4](#Mode 4)
+   1. [Mode 0](#Mode-0)
+   2. [Mode 1](#Mode-1)
+   3. [Mode 2](#Mode-2)
+   4. [Mode 3](#Mode-3)
+   5. [Mode 4](#Mode-4)
    6. [Scans](#Scans)
 
 <a name="Installation" id="Installation"></a>
@@ -168,7 +168,7 @@ Example Output for Mode 4: <https://github.com/jakehildreth/Locksmith/blob/main/
 <a name="Scans" id="Scans"></a>
 ### Scans
 
-Use the `-Scans` parameter to choose which vulnerabilities to scan for. Acceptable values include `All`, `Auditing`, `ESC1`, `ESC2`, `ESC3`, `ESC4`, `ESC5`, `ESC6`, `ESC7`, `ESC8`, `ESC11`, `ESC13`, `ESC15`, `EKEUwu`, `ESC16` or `PromptMe`. The `PromptMe` option presents an interactive list allowing you to select one or more scans.
+Use the `-Scans` parameter to choose which vulnerabilities to scan for. Acceptable values include `All`, `Auditing`, `ESC1`, `ESC2`, `ESC3`, `ESC4`, `ESC5`, `ESC6`, `ESC7`, `ESC8`, `ESC9`, `ESC11`, `ESC13`, `ESC15`, `EKEUwu`, `ESC16` or `PromptMe`. The `PromptMe` option presents an interactive list allowing you to select one or more scans.
 
 ``` powershell
 # Run all scans
