@@ -28,12 +28,12 @@ A small tool built to find and fix common misconfigurations in Active Directory 
 
 1. [Installation](#Installation)
 2. [Run Locksmith](#Run Locksmith)
-   1. [Mode 0](#Mode-0)
-   2. [Mode 1](#Mode-1)
-   3. [Mode 2](#Mode-2)
-   4. [Mode 3](#Mode-3)
-   5. [Mode 4](#Mode-4)
-   6. [Scans](#Scans)
+   1. [Mode 0](#mode-0-identify-issues-output-to-console-default)
+   2. [Mode 1](#mode-1-identify-issues-and-fixes-output-to-console)
+   3. [Mode 2](#mode-2-identify-issues-output-to-csv)
+   4. [Mode 3](#mode-3-identify-issues-and-fixes-output-to-csv)
+   5. [Mode 4](#mode-4-fix-all-issues)
+   6. [Scans](#scans)
 
 <a name="Installation" id="Installation"></a>
 ## Installation
@@ -80,7 +80,7 @@ Install-Module -Name Locksmith -Scope CurrentUser
 
 There are several modes you can chose from when running `Invoke-Locksmith`. You can also use the **Scans** parameter to choose which scans you want to invoke.
 
-<a name="Mode 0" id="Mode 0"></a>
+<a name="mode-0-identify-issues-output-to-console-default" id="mode-0-identify-issues-output-to-console-default"></a>
 ### Mode 0: Identify Issues, Output to Console (Default)
 
 Running `Invoke-Locksmith.ps1` with no parameters or with `-Mode 0` will scan the current Active Directory forest and output all discovered AD CS issues to the console in **Table** format.
@@ -97,7 +97,7 @@ Invoke-Locksmith
 
 Example Output for Mode 0: <https://github.com/jakehildreth/Locksmith/blob/main//Docs/Examples/Mode0.md>
 
-<a name="Mode 1" id="Mode 1"></a>
+<a name="mode-1-identify-issues-and-fixes-output-to-console" id="mode-1-identify-issues-and-fixes-output-to-console"></a>
 ### Mode 1: Identify Issues and Fixes, Output to Console
 
 This mode scans the current forest and outputs all discovered AD CS issues and possible fixes to the console in **List** format.
@@ -114,7 +114,7 @@ Invoke-Locksmith -Mode 1
 
 Example Output for Mode 1: <https://github.com/jakehildreth/Locksmith/blob/main/Docs/Examples/Mode1.md>
 
-<a name="Mode 2" id="Mode 2"></a>
+<a name="mode-2-identify-issues-output-to-csv" id="mode-2-identify-issues-output-to-csv"></a>
 ### Mode 2: Identify Issues, Output to CSV
 
 Locksmith Mode 2 scans the current forest and outputs all discovered AD CS issues to ADCSIssues.CSV in the present working directory.
@@ -131,7 +131,7 @@ Invoke-Locksmith -Mode 2
 
 Example Output for Mode 2: <https://github.com/jakehildreth/Locksmith/blob/main/Docs/Examples/Mode2.md>
 
-<a name="Mode 3" id="Mode 3"></a>
+<a name="mode-3-identify-issues-and-fixes-output-to-csv" id="mode-3-identify-issues-and-fixes-output-to-csv"></a>
 ### Mode 3: Identify Issues and Fixes, Output to CSV
 
 In Mode 3, Locksmith scans the current forest and outputs all discovered AD CS issues and example fixes to ADCSRemediation.CSV in the present working directory.
@@ -148,7 +148,7 @@ Invoke-Locksmith -Mode 3
 
 Example Output for Mode 3: <https://github.com/jakehildreth/Locksmith/blob/main/Docs/Examples/Mode3.md>
 
-<a name="Mode 4" id="Mode 4"></a>
+<a name="mode-4-fix-all-issues" id="mode-4-fix-all-issues"></a>
 ### Mode 4: Fix All Issues
 
 Mode 4 is the "easy button." Running Locksmith in Mode 4 will identify all misconfigurations and offer to fix each issue. If there is any possible operational impact, Locksmith will warn you.
