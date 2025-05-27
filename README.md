@@ -26,8 +26,8 @@ A small tool built to find and fix common misconfigurations in Active Directory 
 
 ## Contents
 
-1. [Installation](#Installation)
-2. [Run Locksmith](#Run Locksmith)
+1. [Installation](#installation)
+2. [Run Locksmith](#run-locksmith)
    1. [Mode 0](#mode-0-identify-issues-output-to-console-default)
    2. [Mode 1](#mode-1-identify-issues-and-fixes-output-to-console)
    3. [Mode 2](#mode-2-identify-issues-output-to-csv)
@@ -35,7 +35,7 @@ A small tool built to find and fix common misconfigurations in Active Directory 
    5. [Mode 4](#mode-4-fix-all-issues)
    6. [Scans](#scans)
 
-<a name="Installation" id="Installation"></a>
+<a name="installation" id="installation"></a>
 ## Installation
 
 ### Prerequisites
@@ -75,7 +75,7 @@ Install-Module -Name Locksmith -Scope CurrentUser
    .\Invoke-Locksmith.ps1
    ```
 
-<a name="Run Locksmith" id="Run Locksmith"></a>
+<a name="run-locksmith" id="run-locksmith"></a>
 ## Run Locksmith
 
 There are several modes you can chose from when running `Invoke-Locksmith`. You can also use the **Scans** parameter to choose which scans you want to invoke.
