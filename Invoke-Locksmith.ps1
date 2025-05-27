@@ -2043,7 +2043,7 @@ function Get-CAHostObject {
     [CmdletBinding()]
     param (
         [parameter(
-            Mandatory = $true,
+            Mandatory,
             ValueFromPipeline = $true)]
         [Microsoft.ActiveDirectory.Management.ADEntity[]]$ADCSObjects,
         [System.Management.Automation.PSCredential]$Credential,
@@ -2053,20 +2053,20 @@ function Get-CAHostObject {
         if ($Credential) {
             $ADCSObjects | Where-Object objectClass -Match 'pKIEnrollmentService' | ForEach-Object {
                 if ($_.CAHostDistinguishedName) {
-                    Get-ADObject $_.CAHostDistinguishedName -Properties * -Server $ForestGC -Credential $Credential 
+                    Get-ADObject $_.CAHostDistinguishedName -Properties * -Server $ForestGC -Credential $Credential
                 }
                 else {
-                    Write-Warning "Get-CAHostObject: Unable to get information from $($_.DisplayName)" 
+                    Write-Warning "Get-CAHostObject: Unable to get information from $($_.DisplayName)"
                 }
             }
         }
         else {
             $ADCSObjects | Where-Object objectClass -Match 'pKIEnrollmentService' | ForEach-Object {
                 if ($_.CAHostDistinguishedName) {
-                    Get-ADObject -Identity $_.CAHostDistinguishedName -Properties * -Server $ForestGC 
+                    Get-ADObject -Identity $_.CAHostDistinguishedName -Properties * -Server $ForestGC
                 }
                 else {
-                    Write-Warning "Get-CAHostObject: Unable to get information from $($_.DisplayName)" 
+                    Write-Warning "Get-CAHostObject: Unable to get information from $($_.DisplayName)"
                 }
             }
         }
@@ -3029,7 +3029,7 @@ function Set-AdditionalCAProperty {
     [CmdletBinding(SupportsShouldProcess)]
     param (
         [parameter(
-            Mandatory = $true,
+            Mandatory,
             ValueFromPipeline = $true)]
         [Microsoft.ActiveDirectory.Management.ADEntity[]]$ADCSObjects,
         [PSCredential]$Credential,
@@ -3134,10 +3134,10 @@ function Set-AdditionalCAProperty {
                 $CAHostFQDN = (Get-ADObject -Filter { (Name -eq $CAHostName) -and (objectclass -eq 'computer') } -Properties DnsHostname -Server $ForestGC).DnsHostname
             }
             $ping = if ($CAHostFQDN) {
-                Test-Connection -ComputerName $CAHostFQDN -Count 1 -Quiet 
+                Test-Connection -ComputerName $CAHostFQDN -Count 1 -Quiet
             }
             else {
-                Write-Warning "Unable to resolve $($_.Name) Fully Qualified Domain Name (FQDN)" 
+                Write-Warning "Unable to resolve $($_.Name) Fully Qualified Domain Name (FQDN)"
             }
             if ($ping) {
                 try {
@@ -3727,23 +3727,23 @@ function Set-RiskRating {
             switch ($Issue.objectClass) {
                 # Being able to modify Root CA Objects is very bad.
                 'certificationAuthority' {
-                    $RiskValue += 2; $RiskScoring += 'Root Certification Authority bject: +2' 
+                    $RiskValue += 2; $RiskScoring += 'Root Certification Authority bject: +2'
                 }
                 # Being able to modify Issuing CA Objects is also very bad.
                 'pKIEnrollmentService' {
-                    $RiskValue += 2; $RiskScoring += 'Issuing Certification Authority Object: +2' 
+                    $RiskValue += 2; $RiskScoring += 'Issuing Certification Authority Object: +2'
                 }
                 # Being able to modify CA Hosts? Yeah... very bad.
                 'computer' {
-                    $RiskValue += 2; $RiskScoring += 'Certification Authority Host Computer: +2' 
+                    $RiskValue += 2; $RiskScoring += 'Certification Authority Host Computer: +2'
                 }
                 # Being able to modify OIDs could result in ESC13 vulns.
                 'msPKI-Enterprise-Oid' {
-                    $RiskValue += 1; $RiskScoring += 'OID: +1' 
+                    $RiskValue += 1; $RiskScoring += 'OID: +1'
                 }
                 # Being able to modify PKS containers is bad.
                 'container' {
-                    $RiskValue += 1; $RiskScoring += 'Container: +1' 
+                    $RiskValue += 1; $RiskScoring += 'Container: +1'
                 }
             }
         }
@@ -3764,19 +3764,19 @@ function Set-RiskRating {
     # Convert Value to Name
     $RiskName = switch ($RiskValue) {
         { $_ -le 1 } {
-            'Informational' 
+            'Informational'
         }
         2 {
-            'Low' 
+            'Low'
         }
         3 {
-            'Medium' 
+            'Medium'
         }
         4 {
-            'High' 
+            'High'
         }
         { $_ -ge 5 } {
-            'Critical' 
+            'Critical'
         }
     }
 
@@ -4335,7 +4335,7 @@ Set-Acl -Path `$Path -AclObject `$ACL
 "@
             }
             4 {
-                break 
+                break
             }
             5 {
                 $Issue.Fix = @"
@@ -4670,15 +4670,15 @@ Function Write-HostColorized {
     #   * At least for now, we remain PSv2-COMPATIBLE.
     #   * Thus:
     #     * no `[ordered]`, `::new()`, `[pscustomobject]`, ...
-    #     * No implicit Boolean properties in [CmdletBinding()] and [Parameter()] attributes (`Mandatory = $true` instead of just `Mandatory`)
+    #     * No implicit Boolean properties in [CmdletBinding()] and [Parameter()] attributes (`Mandatory` instead of just `Mandatory`)
     # ===
 
     [CmdletBinding(DefaultParameterSetName = 'SingleColor')]
     param(
-        [Parameter(ParameterSetName = 'SingleColor', Position = 0, Mandatory = $True)] [string[]] $Pattern,
+        [Parameter(ParameterSetName = 'SingleColor', Position = 0, Mandatory)] [string[]] $Pattern,
         [Parameter(ParameterSetName = 'SingleColor', Position = 1)] [ConsoleColor] $ForegroundColor = [ConsoleColor]::Yellow,
         [Parameter(ParameterSetName = 'SingleColor', Position = 2)] [ConsoleColor] $BackgroundColor,
-        [Parameter(ParameterSetName = 'PerPatternColor', Position = 0, Mandatory = $True)] [System.Collections.IDictionary] $PatternColorMap,
+        [Parameter(ParameterSetName = 'PerPatternColor', Position = 0, Mandatory)] [System.Collections.IDictionary] $PatternColorMap,
         [Parameter(ValueFromPipeline = $True)] $InputObject,
         [switch] $WholeLine,
         [switch] $SimpleMatch,
@@ -4706,10 +4706,10 @@ Function Write-HostColorized {
             # We precompile them for better performance with many input objects.
             [System.Text.RegularExpressions.RegexOptions] $reOpts =
             if ($CaseSensitive) {
-                'Compiled, ExplicitCapture' 
+                'Compiled, ExplicitCapture'
             }
             else {
-                'Compiled, ExplicitCapture, IgnoreCase' 
+                'Compiled, ExplicitCapture, IgnoreCase'
             }
 
             # Transform the dictionary:
@@ -4731,10 +4731,10 @@ Function Write-HostColorized {
                 }
                 $colorArgs = @{ }
                 if ($fg) {
-                    $colorArgs['ForegroundColor'] = [ConsoleColor] $fg 
+                    $colorArgs['ForegroundColor'] = [ConsoleColor] $fg
                 }
                 if ($bg) {
-                    $colorArgs['BackgroundColor'] = [ConsoleColor] $bg 
+                    $colorArgs['BackgroundColor'] = [ConsoleColor] $bg
                 }
 
                 # Consolidate the patterns into a single pattern with alternation ('|'),
@@ -4753,7 +4753,7 @@ Function Write-HostColorized {
             }
         }
         catch {
-            throw 
+            throw
         }
 
         # Construct the arguments to pass to Out-String.
@@ -4776,7 +4776,7 @@ Function Write-HostColorized {
                     foreach ($m in $entry.Key.Matches($_)) {
                         @{ Index = $m.Index; Text = $m.Value; ColorArgs = $entry.Value }
                         if ($WholeLine) {
-                            break patternLoop 
+                            break patternLoop
                         }
                     }
                 }
