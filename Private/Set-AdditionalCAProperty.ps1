@@ -30,7 +30,7 @@
     [CmdletBinding(SupportsShouldProcess)]
     param (
         [parameter(
-            Mandatory = $true,
+            Mandatory,
             ValueFromPipeline = $true)]
         [Microsoft.ActiveDirectory.Management.ADEntity[]]$ADCSObjects,
         [PSCredential]$Credential,
@@ -40,7 +40,7 @@
     begin {
         if (-not ([System.Management.Automation.PSTypeName]'TrustAllCertsPolicy') ) {
             if ($PSVersionTable.PSEdition -eq 'Desktop') {
-                $code = @"
+                $code = @'
                     using System.Net;
                     using System.Security.Cryptography.X509Certificates;
                     public class TrustAllCertsPolicy : ICertificatePolicy {
@@ -48,11 +48,11 @@
                             return true;
                         }
                     }
-"@
+'@
                 Add-Type -TypeDefinition $code -Language CSharp
                 [System.Net.ServicePointManager]::CertificatePolicy = New-Object TrustAllCertsPolicy
             } else {
-                Add-Type @"
+                Add-Type @'
                     using System.Net;
                     using System.Security.Cryptography.X509Certificates;
                     using System.Net.Security;
@@ -61,7 +61,7 @@
                             return true;
                         }
                     }
-"@
+'@
                 # Set the ServerCertificateValidationCallback
                 [System.Net.ServicePointManager]::ServerCertificateValidationCallback = [TrustAllCertsPolicy]::TrustAllCerts
             }
@@ -72,7 +72,7 @@
         $ADCSObjects | Where-Object objectClass -Match 'pKIEnrollmentService' | ForEach-Object {
             $CAEnrollmentEndpoint = @()
             #[array]$CAEnrollmentEndpoint = $_.'msPKI-Enrollment-Servers' | Select-String 'http.*' | ForEach-Object { $_.Matches[0].Value }
-            foreach ($directory in @("certsrv/", "$($_.Name)_CES_Kerberos/service.svc", "$($_.Name)_CES_Kerberos/service.svc/CES", "ADPolicyProvider_CEP_Kerberos/service.svc", "certsrv/mscep/")) {
+            foreach ($directory in @('certsrv/', "$($_.Name)_CES_Kerberos/service.svc", "$($_.Name)_CES_Kerberos/service.svc/CES", 'ADPolicyProvider_CEP_Kerberos/service.svc', 'certsrv/mscep/')) {
                 $URL = "://$($_.dNSHostName)/$directory"
                 try {
                     $Auth = 'NTLM'
@@ -116,6 +116,7 @@
                                 'Auth' = $Auth
                             }
                         } catch {
+                            Write-Debug "There may have been an error or something nothing found. $_"
                         }
                     }
                 }
