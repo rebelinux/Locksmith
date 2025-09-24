@@ -5,6 +5,8 @@ online version:
 schema: 2.0.0
 ---
 
+![Locksmith on GitHub](./assets/locksmith-logo-indigo.svg){ width="250" }
+
 # Invoke-Locksmith
 
 ## SYNOPSIS
