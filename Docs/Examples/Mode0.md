@@ -1,4 +1,4 @@
-```
+```text
  _       _____  _______ _     _ _______ _______ _____ _______ _     _
  |      |     | |       |____/  |______ |  |  |   |      |    |_____|
  |_____ |_____| |_____  |    \_ ______| |  |  | __|__    |    |     |
@@ -62,3 +62,4 @@ ESC6      horse-DC1-CA EDITF_ATTRIBUTESUBJECTALTNAME2 is enabled.
 Technique Name         Issue
 --------- ----         -----
 ESC8      horse-DC1-CA HTTP enrollment is enabled.
+```

@@ -1,4 +1,4 @@
-```
+```text
 "Forest","Name","DistinguishedName","Issue","Fix"
 "horse.local","horse-DC1-CA","CN=horse-DC1-CA,CN=Enrollment Services,CN=Public Key Services,CN=Services,CN=Configuration,DC=horse,DC=local","Auditing is not fully enabled. Current value is 0","certutil -config 'DC1.horse.local\horse-DC1-CA' -setreg 'CA\AuditFilter' 127; Invoke-Command -ComputerName 'DC1.horse.local' -ScriptBlock { Get-Service -Name 'certsvc' | Restart-Service -Force }"
 "horse.local","ESC1-Vulnerable","CN=ESC1-Vulnerable,CN=Certificate Templates,CN=Public Key Services,CN=Services,CN=Configuration,DC=horse,DC=local","HORSE\kari can enroll in this Client Authentication template using a SAN without Manager Approval","Get-ADObject 'CN=ESC1-Vulnerable,CN=Certificate Templates,CN=Public Key Services,CN=Services,CN=Configuration,DC=horse,DC=local' | Set-ADObject -Replace @{'msPKI-Certificate-Name-Flag' = 0}"
@@ -9,3 +9,4 @@
 "horse.local","DC1","CN=DC1,CN=AIA,CN=Public Key Services,CN=Services,CN=Configuration,DC=horse,DC=local","HORSE\kari has GenericAll rights on this object","[Available in experimental branch]"
 "horse.local","horse-DC1-CA","CN=horse-DC1-CA,CN=Enrollment Services,CN=Public Key Services,CN=Services,CN=Configuration,DC=horse,DC=local","EDITF_ATTRIBUTESUBJECTALTNAME2 is enabled.","certutil -config DC1.horse.local\horse-DC1-CA -setreg policy\EditFlags -EDITF_ATTRIBUTESUBJECTALTNAME2; Invoke-Command -ComputerName ""DC1.horse.local"" -ScriptBlock { Get-Service -Name 'certsvc' | Restart-Service -Force }"
 "horse.local","horse-DC1-CA","CN=horse-DC1-CA,CN=Enrollment Services,CN=Public Key Services,CN=Services,CN=Configuration,DC=horse,DC=local","HTTP enrollment is enabled.","TBD - Remediate by doing 1, 2, and 3"
+```

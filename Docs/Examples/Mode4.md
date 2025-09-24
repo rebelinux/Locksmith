@@ -1,6 +1,6 @@
 ### Locksmith will prompt you to confirm each remediation action.
 
-```
+```text
 
  _       _____  _______ _     _ _______ _______ _____ _______ _     _
  |      |     | |       |____/  |______ |  |  |   |      |    |_____|
@@ -23,7 +23,8 @@ Continue with this operation?
 [Y] Yes  [A] Yes to All  [H] Halt Command  [S] Suspend  [?] Help (default is "Y"):
 ```
 ### Locksmith will warn you if there are possible operational impacts.
-```
+
+```text
 
  _       _____  _______ _     _ _______ _______ _____ _______ _     _
  |      |     | |       |____/  |______ |  |  |   |      |    |_____|

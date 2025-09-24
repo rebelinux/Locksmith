@@ -16,35 +16,24 @@ repo_name: "JakeHildreth/Locksmith"
 # edit_uri_template:
 site_description: "A small tool to find and fix common misconfigurations in Active Directory Certificate Services." # meta tag to the generated HTML header
 site_author: "Jake Hildreth" # meta tag to the generated HTML header
-copyright: "(c) 2024 Jake Hildreth."
+copyright: "Copyright &copy; 2025 Jake Hildreth."
 # remote_branch: gh-deploy
 # remote_name:
 docs_dir: "Docs"
-# site_dir:
-# extra_css:
-# extra_javascript:
-# markdown_extensions:
-# Python Markdown
-# - admonition
-# - toc:
-#     permalink: true
-# code highlighting
-# - pymdownx.highlight:
-#     use_pygments: true
-# - pymdownx.highlight:
-#     anchor_linenums: true
-# - pymdownx.inlinehilite
-# - pymdownx.snippets
-# - pymdownx.superfences
 
-# extra_templates:
-# extra:
-
-# #plugins:
-# #  - social
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/jakehildreth
+    - icon: fontawesome/brands/linkedin
+      link: https://linkedin.com/in/jakehildreth
+    - icon: fontawesome/brands/bluesky
+      link: https://bsky.app/profile/dotdot.horse
 
 theme:
   name: material
+  logo: assets/locksmith-sticker.png
+  favicon: assets/locksmith.ico
   highlightjs: true
   hljs_languages:
     - yaml
@@ -59,6 +48,8 @@ theme:
     # Palette toggle for light mode
     - media: "(prefers-color-scheme: light)"
       scheme: default
+      # primary: indigo
+      # accent: indigo
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
@@ -66,12 +57,12 @@ theme:
     # Palette toggle for dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
+      # primary: indigo
+      # accent: indigo
       toggle:
         icon: material/brightness-4
         name: Switch to system preference
-
   language: en
-  # custom_dir: overrides
   features:
     - navigation.tabs
     - navigation.tabs.sticky
@@ -80,6 +71,7 @@ theme:
     - navigation.instant.prefetch
     - navigation.tracking
     - navigation.sections
+    - navigation.footer
     - navigation.top
     - toc.follow
     - toc.integrate
@@ -90,3 +82,22 @@ markdown_extensions:
         - name: mermaid
           class: mermaid
           format: !!python/name:pymdownx.superfences.fence_code_format
+  - attr_list
+  - admonition
+  - meta
+  - tables
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+      auto_title: true
+      use_pygments: true
+  - md_in_html
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.critic
+  - pymdownx.caret
+  - pymdownx.mark
+  - pymdownx.tilde
+  - pymdownx.details

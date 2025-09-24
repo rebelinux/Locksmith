@@ -1,5 +1,5 @@
 
- ```
+```text
  _       _____  _______ _     _ _______ _______ _____ _______ _     _
  |      |     | |       |____/  |______ |  |  |   |      |    |_____|
  |_____ |_____| |_____  |    \_ ______| |  |  | __|__    |    |     |
@@ -100,4 +100,5 @@ DistinguishedName   : CN=horse-DC1-CA,CN=Enrollment Services,CN=Public Key
                       Services,CN=Services,CN=Configuration,DC=horse,DC=local
 EnrollmentEndpoints : {http://DC1.horse.local/certsrv/}
 Issue               : HTTP enrollment is enabled.
-Fix                 : 
+Fix                 :
+```

@@ -12,7 +12,7 @@ Finds the most common malconfigurations of Active Directory Certificate Services
 
 ## SYNTAX
 
-```
+```powershell
 Invoke-Locksmith [[-Mode] <Int32>] [[-Scans] <Array>] [[-OutputPath] <String>] [[-Credential] <PSCredential>]
  [<CommonParameters>]
 ```
@@ -24,14 +24,16 @@ commonly found in Enterprise mode AD CS installations.
 ## EXAMPLES
 
 ### EXAMPLE 1
-```
+
+```powershell
 Invoke-Locksmith -Mode 0 -Scans All -OutputPath 'C:\Temp'
 ```
 
 Finds all malconfigurations and displays them in the console.
 
 ### EXAMPLE 2
-```
+
+```powershell
 Invoke-Locksmith -Mode 2 -Scans All -OutputPath 'C:\Temp'
 ```
 
@@ -43,25 +45,30 @@ The findings are saved in a CSV file in C:\Temp.
 ### -Mode
 Specifies sets of common script execution modes.
 
--Mode 0
+-Mode 0:
+
 Finds any malconfigurations and displays them in the console.
 No attempt is made to fix identified issues.
 
--Mode 1
+-Mode 1:
+
 Finds any malconfigurations and displays them in the console.
 Displays example Powershell snippet that can be used to resolve the issue.
 No attempt is made to fix identified issues.
 
--Mode 2
+-Mode 2:
+
 Finds any malconfigurations and writes them to a series of CSV files.
 No attempt is made to fix identified issues.
 
--Mode 3
+-Mode 3:
+
 Finds any malconfigurations and writes them to a series of CSV files.
 Creates code snippets to fix each issue and writes them to an environment-specific custom .PS1 file.
 No attempt is made to fix identified issues.
 
--Mode 4
+-Mode 4:
+
 Finds any malconfigurations and creates code snippets to fix each issue.
 Attempts to fix all identified issues.
 This mode may require high-privileged access.
@@ -79,13 +86,16 @@ Accept wildcard characters: False
 ```
 
 ### -Scans
+
 Specify which scans you want to run.
 Available scans: 'All' or Auditing, ESC1, ESC2, ESC3, ESC4, ESC5, ESC6, ESC8, or 'PromptMe'
 
--Scans All
+-Scans All:
+
 Run all scans (default).
 
--Scans PromptMe
+-Scans PromptMe:
+
 Presents a grid view of the available scan types that can be selected and run them after you click OK.
 
 ```yaml
@@ -101,6 +111,7 @@ Accept wildcard characters: False
 ```
 
 ### -OutputPath
+
 Specify the path where you want to save reports and mitigation scripts.
 
 ```yaml
@@ -116,6 +127,7 @@ Accept wildcard characters: False
 ```
 
 ### -Credential
+
 The credential to use for working with ADCS.
 
 ```yaml
@@ -131,19 +143,24 @@ Accept wildcard characters: False
 ```
 
 ### CommonParameters
+
 This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable, -InformationAction, -InformationVariable, -OutBuffer, -OutVariable, -PipelineVariable, -Verbose, -WarningAction, -WarningVariable, and -ProgressAction.  For more information, see [about_CommonParameters](http://go.microsoft.com/fwlink/?LinkID=113216).
 
 ## INPUTS
 
-### None. You cannot pipe objects to Invoke-Locksmith.ps1.
+None. You cannot pipe objects to Invoke-Locksmith.ps1.
+
 ## OUTPUTS
 
 ### Output types:
-### 1. Console display of identified issues.
-### 2. Console display of identified issues and their fixes.
-### 3. CSV containing all identified issues.
-### 4. CSV containing all identified issues and their fixes.
+
+1. Console display of identified issues.
+2. Console display of identified issues and their fixes.
+3. CSV containing all identified issues.
+4. CSV containing all identified issues and their fixes.
+
 ## NOTES
+
 The Windows PowerShell cmdlet Restart-Service requires RunAsAdministrator.
 
 ## RELATED LINKS

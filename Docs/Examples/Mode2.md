@@ -1,4 +1,4 @@
-```
+```text
 "Forest","Name","Issue"
 "horse.local","horse-DC1-CA","Auditing is not fully enabled. Current value is 0"
 "horse.local","ESC1-Vulnerable","HORSE\kari can enroll in this Client Authentication template using a SAN without Manager Approval"
@@ -9,3 +9,4 @@
 "horse.local","DC1","HORSE\kari has GenericAll rights on this object"
 "horse.local","horse-DC1-CA","EDITF_ATTRIBUTESUBJECTALTNAME2 is enabled."
 "horse.local","horse-DC1-CA","HTTP enrollment is enabled."
+```
