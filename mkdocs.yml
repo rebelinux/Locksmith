@@ -32,8 +32,8 @@ extra:
 
 theme:
   name: material
-  logo: assets/locksmith-sticker.png
-  favicon: assets/locksmith.ico
+  logo: assets/locksmith-logo-indigo.svg
+  favicon: assets/locksmith-favicon.svg
   highlightjs: true
   hljs_languages:
     - yaml

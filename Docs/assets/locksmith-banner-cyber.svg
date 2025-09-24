@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1200" height="300" viewBox="0 0 1200 300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Dark cyber background gradient -->
+    <linearGradient id="cyberBannerBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f0f23;stop-opacity:1" />
+      <stop offset="30%" style="stop-color:#1a1a2e;stop-opacity:1" />
+      <stop offset="70%" style="stop-color:#16213e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0f0f23;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Neon indigo gradient for elements -->
+    <linearGradient id="neonBanner" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#00f5ff;stop-opacity:1" />
+      <stop offset="25%" style="stop-color:#6366f1;stop-opacity:1" />
+      <stop offset="75%" style="stop-color:#4f46e5;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Glowing effect filter -->
+    <filter id="bannerGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge> 
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    
+    <!-- Strong glow for text -->
+    <filter id="bannerTextGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feMerge> 
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    
+    <!-- Subtle pulse animation -->
+    <animate id="pulse" attributeName="opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite"/>
+  </defs>
+  
+  <!-- Dark cyber background -->
+  <rect x="0" y="0" width="1200" height="300" fill="url(#cyberBannerBg)"/>
+  
+  <!-- Circuit board pattern background -->
+  <g stroke="#1e3a8a" stroke-width="1" fill="none" opacity="0.4">
+    <!-- Main horizontal circuit traces -->
+    <line x1="0" y1="60" x2="300" y2="60"/>
+    <line x1="900" y1="60" x2="1200" y2="60"/>
+    <line x1="0" y1="120" x2="250" y2="120"/>
+    <line x1="950" y1="120" x2="1200" y2="120"/>
+    <line x1="0" y1="180" x2="280" y2="180"/>
+    <line x1="920" y1="180" x2="1200" y2="180"/>
+    <line x1="0" y1="240" x2="320" y2="240"/>
+    <line x1="880" y1="240" x2="1200" y2="240"/>
+    
+    <!-- Vertical connectors -->
+    <line x1="80" y1="0" x2="80" y2="300"/>
+    <line x1="1120" y1="0" x2="1120" y2="300"/>
+    <line x1="200" y1="40" x2="200" y2="140"/>
+    <line x1="1000" y1="160" x2="1000" y2="260"/>
+    
+    <!-- Circuit nodes and components -->
+    <circle cx="80" cy="60" r="3"/>
+    <circle cx="200" cy="120" r="3"/>
+    <circle cx="1000" cy="180" r="3"/>
+    <circle cx="1120" cy="240" r="3"/>
+    <rect x="78" y="178" width="4" height="4"/>
+    <rect x="1118" y="118" width="4" height="4"/>
+    
+    <!-- Microprocessor-style rectangles -->
+    <rect x="150" y="50" width="30" height="20" rx="2"/>
+    <rect x="1020" y="230" width="30" height="20" rx="2"/>
+  </g>
+  
+  <!-- Matrix-style binary streams -->
+  <g font-family="'Courier New', monospace" font-size="12" fill="#00ff41" opacity="0.25">
+    <text x="50" y="40">01001001 11010110 10110101 01101001</text>
+    <text x="50" y="280">11001010 00111101 10101110 11100011</text>
+    <text x="850" y="40">10011010 01101100 11010101 00110110</text>
+    <text x="850" y="280">01110101 10001100 11110010 01010111</text>
+  </g>
+  
+  <!-- Left side: Lock icon -->
+  <g transform="translate(100, 75)">
+    <!-- Hexagonal frame -->
+    <polygon points="40,20 60,10 90,10 110,20 110,130 90,140 60,140 40,130" 
+             fill="none" stroke="#3b82f6" stroke-width="2" opacity="0.8" filter="url(#bannerGlow)"/>
+    
+    <!-- Lock with enhanced details -->
+    <g filter="url(#bannerGlow)">
+      <!-- Lock shackle -->
+      <path d="M 60 35 A 20 20 0 0 1 100 35 L 100 65 L 95 65 L 95 42 A 15 15 0 0 0 65 42 L 65 65 L 60 65 Z" 
+            fill="none" stroke="#00f5ff" stroke-width="3"/>
+      
+      <!-- Lock body -->
+      <rect x="50" y="65" width="60" height="45" rx="6" ry="6" fill="#0a0a1a" stroke="#3b82f6" stroke-width="2"/>
+      <rect x="53" y="68" width="54" height="39" rx="3" ry="3" fill="none" stroke="#1e3a8a" stroke-width="1"/>
+      
+      <!-- Digital keyhole -->
+      <polygon points="80,75 85,80 80,85 75,80" fill="#00f5ff"/>
+      <rect x="78" y="85" width="4" height="6" fill="#00f5ff"/>
+      
+      <!-- Status LEDs -->
+      <circle cx="55" cy="72" r="1.5" fill="#ff0040"/>
+      <circle cx="105" cy="72" r="1.5" fill="#00ff41"/>
+    </g>
+  </g>
+  
+  <!-- Center: Main title and subtitle -->
+  <g transform="translate(600, 150)">
+    <!-- Main title -->
+    <text x="0" y="-30" text-anchor="middle" fill="#00f5ff" font-family="'Orbitron', 'Courier New', monospace" 
+          font-size="48" font-weight="900" letter-spacing="3px" filter="url(#bannerTextGlow)">
+      LOCKSMITH
+    </text>
+    
+    <!-- Subtitle -->
+    <text x="0" y="10" text-anchor="middle" fill="#6366f1" font-family="'Orbitron', 'Courier New', monospace" 
+          font-size="18" font-weight="700" letter-spacing="2px" opacity="0.9">
+      AD CERTIFICATE SERVICES SECURITY AUDITING TOOL
+    </text>
+    
+    <!-- Command line style -->
+    <text x="0" y="40" text-anchor="middle" fill="#00ff41" font-family="'Courier New', monospace" 
+          font-size="14" font-weight="bold" letter-spacing="1px">
+      &gt; Invoke-Locksmith -Mode 0 -Scans All
+    </text>
+  </g>
+  
+  <!-- Right side: Terminal/Code window -->
+  <g transform="translate(950, 75)">
+    <!-- Terminal window frame -->
+    <rect x="0" y="0" width="180" height="120" rx="8" ry="8" fill="#0a0a1a" stroke="#3b82f6" stroke-width="2" filter="url(#bannerGlow)"/>
+    <rect x="2" y="2" width="176" height="116" rx="6" ry="6" fill="none" stroke="#1e3a8a" stroke-width="1"/>
+    
+    <!-- Terminal header -->
+    <rect x="0" y="0" width="180" height="20" rx="8" ry="8" fill="#1e3a8a"/>
+    <circle cx="15" cy="10" r="3" fill="#ff0040"/>
+    <circle cx="25" cy="10" r="3" fill="#ffa500"/>
+    <circle cx="35" cy="10" r="3" fill="#00ff41"/>
+    
+    <!-- Terminal content -->
+    <g font-family="'Courier New', monospace" font-size="8" fill="#00ff41">
+      <text x="8" y="35">root@locksmith:~# ./scan</text>
+      <text x="8" y="48">[+] ESC1 Found: 3 issues</text>
+      <text x="8" y="61">[+] ESC4 Found: 1 issue</text>
+      <text x="8" y="74">[!] ESC8 Found: 2 issues</text>
+      <text x="8" y="87">[*] Scan complete...</text>
+      <text x="8" y="100">root@locksmith:~#</text>
+      <!-- Blinking cursor -->
+      <rect x="120" y="93" width="6" height="8" fill="#00ff41">
+        <animate attributeName="opacity" values="1;0;1" dur="1s" repeatCount="indefinite"/>
+      </rect>
+    </g>
+  </g>
+  
+  <!-- Animated scanning line -->
+  <line x1="0" y1="150" x2="1200" y2="150" stroke="#00ff41" stroke-width="1" opacity="0.4">
+    <animate attributeName="opacity" values="0.2;0.8;0.2" dur="4s" repeatCount="indefinite"/>
+  </line>
+  
+  <!-- Security protocol indicators in corners -->
+  <g font-family="'Courier New', monospace" font-size="10" fill="#00ff41" opacity="0.5">
+    <text x="20" y="25">SCAN_ACTIVE</text>
+    <text x="1050" y="25">PKI_AUDIT</text>
+    <text x="20" y="285">SSL_CHECK</text>
+    <text x="1050" y="285">CERT_ENUM</text>
+  </g>
+  
+  <!-- Corner targeting brackets -->
+  <g stroke="#3b82f6" stroke-width="2" fill="none" opacity="0.6">
+    <path d="M 10 10 L 10 25 M 10 10 L 25 10"/>
+    <path d="M 1190 10 L 1175 10 M 1190 10 L 1190 25"/>
+    <path d="M 10 290 L 10 275 M 10 290 L 25 290"/>
+    <path d="M 1190 290 L 1190 275 M 1190 290 L 1175 290"/>
+  </g>
+  
+  <!-- Data flow indicators -->
+  <g font-family="'Courier New', monospace" font-size="8" fill="#1e3a8a" opacity="0.7">
+    <text x="300" y="20" transform="rotate(15 300 20)">0xDEADBEEF</text>
+    <text x="900" y="280" transform="rotate(-15 900 280)">0xCAFEBABE</text>
+    <text x="150" y="280">PKI://ADCS/ENUM</text>
+    <text x="850" y="20">SEC://AUDIT/SCAN</text>
+  </g>
+</svg>

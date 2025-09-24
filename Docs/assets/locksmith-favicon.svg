@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Dark background -->
+    <radialGradient id="faviconBg" cx="50%" cy="50%" r="70%">
+      <stop offset="0%" style="stop-color:#1a1a2e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0f0f23;stop-opacity:1" />
+    </radialGradient>
+    
+    <!-- Neon lock gradient -->
+    <linearGradient id="faviconLock" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00f5ff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Glow effect -->
+    <filter id="faviconGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="1" result="coloredBlur"/>
+      <feMerge> 
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Dark cyber background -->
+  <rect x="0" y="0" width="32" height="32" rx="4" ry="4" fill="url(#faviconBg)"/>
+  
+  <!-- Minimal circuit pattern -->
+  <g stroke="#1e3a8a" stroke-width="0.5" fill="none" opacity="0.6">
+    <line x1="0" y1="8" x2="8" y2="8"/>
+    <line x1="24" y1="8" x2="32" y2="8"/>
+    <line x1="0" y1="24" x2="8" y2="24"/>
+    <line x1="24" y1="24" x2="32" y2="24"/>
+    <circle cx="8" cy="8" r="1"/>
+    <circle cx="24" cy="24" r="1"/>
+  </g>
+  
+  <!-- Main lock icon -->
+  <g transform="translate(16, 16)" filter="url(#faviconGlow)">
+    <!-- Lock shackle -->
+    <path d="M -4 -6 A 4 4 0 0 1 4 -6 L 4 -2 L 3 -2 L 3 -5 A 3 3 0 0 0 -3 -5 L -3 -2 L -4 -2 Z" 
+          fill="none" stroke="#00f5ff" stroke-width="1.5"/>
+    
+    <!-- Lock body -->
+    <rect x="-5" y="-2" width="10" height="8" rx="1" ry="1" fill="#0a0a1a" stroke="#3b82f6" stroke-width="1"/>
+    
+    <!-- Digital keyhole (simplified) -->
+    <rect x="-1" y="0" width="2" height="3" rx="1" fill="#00f5ff"/>
+    
+    <!-- Terminal prompt indicator -->
+    <g transform="translate(-3, 2)">
+      <path d="M 0 0 L 2 1 L 0 2" fill="none" stroke="#00ff41" stroke-width="0.8" stroke-linecap="round"/>
+    </g>
+    
+    <!-- Status LED -->
+    <circle cx="3" cy="-1" r="0.8" fill="#00ff41"/>
+  </g>
+  
+  <!-- Corner indicators -->
+  <g fill="#3b82f6" opacity="0.8">
+    <rect x="1" y="1" width="2" height="1"/>
+    <rect x="29" y="30" width="2" height="1"/>
+  </g>
+</svg>

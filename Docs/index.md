@@ -1,14 +1,8 @@
 <!-- markdownlint-disable MD033 -->
 # Locksmith
-```
- _       _____  _______ _     _ _______ _______ _____ _______ _     _
- |      |     | |       |____/  |______ |  |  |   |      |    |_____|
- |_____ |_____| |_____  |    \_ ______| |  |  | __|__    |    |     |
-     .--.                  .--.                  .--.
-    /.-. '----------.     /.-. '----------.     /.-. '----------.
-    \'-' .---'-''-'-'     \'-' .--'--''-'-'     \'-' .--'--'-''-'
-     '--'                  '--'                  '--'
-```
+
+![Locksmith on GitHub](./assets/locksmith-banner-cyber.svg)
+
 A small tool built to find and fix common misconfigurations in Active Directory Certificate Services.
 <!-- locksmith-badges-start -->
 ![GitHub release](https://img.shields.io/github/v/release/jakehildreth/locksmith?sort=semver)
